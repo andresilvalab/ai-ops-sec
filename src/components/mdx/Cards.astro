@@ -58,11 +58,19 @@ const dot = { neg: 'var(--neg)', ok: 'var(--accent)', amber: 'var(--amber)', gat
 	.k {
 		display: block;
 		font: 600 15px/1 var(--font-mono);
-		color: var(--amber);
+		color: var(--muted);
 		margin-bottom: 8px;
 	}
-	.gate .k {
+	/* o número segue o tom do cartão: âmbar é aviso no sistema, não numeração */
+	.gate .k,
+	.ok .k {
 		color: var(--accent);
+	}
+	.amber .k {
+		color: var(--amber);
+	}
+	.neg .k {
+		color: var(--neg);
 	}
 	h4 {
 		margin: 0 0 5px;
