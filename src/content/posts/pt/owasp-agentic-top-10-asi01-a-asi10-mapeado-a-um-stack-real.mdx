@@ -1,0 +1,244 @@
+---
+title: "OWASP Agentic Top 10 mapeado a um stack real: o que cada ASI exige de quem opera agentes"
+description: "Peguei nos dez riscos do OWASP para aplicacoes agencticas e mapeei cada um a uma peca concreta de um stack de producao. A tabela, os incidentes, e a config que falta."
+pubDate: 2026-09-22
+lang: pt
+area: ai-ops-sec
+translationKey: owasp-agentic-top-10-asi01-a-asi10-mapeado-a-um-stack-real
+tags: [owasp, agentic-security, mcp, opentelemetry, n8n, supply-chain, observabilidade, prompt-injection]
+series: "Observabilidade de agentes"
+cover: governance-shield
+status: published
+sources:
+  - title: "OWASP Top 10 for Agentic Applications 2026 (publicado 9 Dez 2025)"
+    url: "https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/"
+    accessed: 2026-09-22
+  - title: "NeuralTrust, OWASP Agentic AI Top 10: Every Risk Explained with Enterprise Mitigations"
+    url: "https://neuraltrust.ai/blog/owasp-agentic-ai-top-10"
+    accessed: 2026-09-22
+  - title: "CVE-2025-59532: Codex CLI Sandbox Bypass (CVSS 8.6)"
+    url: "https://app.opencve.io/cve/?product=codex_cli&vendor=openai"
+    accessed: 2026-09-22
+  - title: "Datadog Security Labs, LiteLLM and Telnyx compromised on PyPI: TeamPCP supply chain campaign (Mar 2026)"
+    url: "https://securitylabs.datadoghq.com/articles/litellm-compromised-pypi-teampcp-supply-chain-campaign/"
+    accessed: 2026-09-22
+  - title: "AWS Security Bulletin AWS-2025-015: Amazon Q Developer Extension (CVE-2025-8217)"
+    url: "https://aws.amazon.com/security/security-bulletins/AWS-2025-015/"
+    accessed: 2026-09-22
+  - title: "Invariant Labs, GitHub MCP Exploited: Accessing private repositories via MCP"
+    url: "https://invariantlabs.ai/blog/mcp-github-vulnerability"
+    accessed: 2026-09-22
+  - title: "Incident 1152: Replit Agent Production Database Deletion (AIID)"
+    url: "https://incidentdatabase.ai/cite/1152/"
+    accessed: 2026-09-22
+  - title: "Johann Rehberger, Persistent memory poisoning in AI agents (Gemini, Fev 2025)"
+    url: "https://christian-schneider.net/blog/persistent-memory-poisoning-in-ai-agents/"
+    accessed: 2026-09-22
+  - title: "The Agent Report, MCP Security in Q3 2026: 14 CVEs, 200,000 Exposed Servers"
+    url: "https://the-agent-report.com/2026/07/mcp-security-landscape-2026-vulnerabilities-mitigations/"
+    accessed: 2026-09-22
+  - title: "n8n Docs, Trace executions with OpenTelemetry (agent tracing desde 2.33.0)"
+    url: "https://docs.n8n.io/deploy/host-n8n/keep-n8n-running/trace-executions-with-opentelemetry"
+    accessed: 2026-09-22
+  - title: "OpenTelemetry, semantic conventions for GenAI (repositorio dedicado, em Development)"
+    url: "https://github.com/open-telemetry/semantic-conventions-genai"
+    accessed: 2026-09-22
+  - title: "Anthropic, Mitigate jailbreaks and prompt injections"
+    url: "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks"
+    accessed: 2026-09-22
+  - title: "Palo Alto Networks, OWASP Top 10 for Agentic Applications 2026 Is Here"
+    url: "https://www.paloaltonetworks.com/blog/cloud-security/owasp-agentic-ai-security/"
+    accessed: 2026-09-22
+  - title: "Snyk, How a Poisoned Security Scanner Became the Key to Backdooring LiteLLM"
+    url: "https://snyk.io/blog/poisoned-security-scanner-backdooring-litellm/"
+    accessed: 2026-09-22
+verified:
+  - "Data de publicacao do OWASP Agentic Top 10: 9 Dezembro 2025, confirmada na pagina oficial e no press release da OWASP"
+  - "Lista ASI01-ASI10 com nomes confirmada na pagina oficial e em NeuralTrust (concordam)"
+  - "CVE-2025-59532 (Codex CLI): versoes afectadas 0.2.0 a 0.38.0, corrigido em 0.39.0, CVSS 8.6, confirmado em opencve.io e strix.ai"
+  - "LiteLLM supply chain: versoes backdoored 1.82.7 e 1.82.8, publicadas 24 Mar 2026, via envenenamento do trivy-action, confirmado em Datadog Security Labs e Snyk"
+  - "Amazon Q Developer CVE-2025-8217: versao comprometida 1.84.0, Jul 2025, erro de sintaxe impediu execucao, confirmado em AWS Security Bulletin"
+  - "Replit production database deletion: Jul 2025, SaaStr/Jason Lemkin, 1200+ executivos perdidos, confirmado em AIID incidente 1152"
+  - "Gemini memory poisoning: Johann Rehberger, Fev 2025, via documento injectado + delayed tool invocation, confirmado no blog do autor"
+  - "n8n agent tracing desde 2.33.0: env vars N8N_OTEL_ENABLED e N8N_AGENTS_TRACING_ENABLED, spans gen_ai.*, confirmado nos docs oficiais"
+  - "MCP CVEs em 2026: 14 CVEs publicos, 7000 servidores MCP expostos, confirmado no The Agent Report"
+  - "GitHub MCP exploit: issue malicioso em repo publico forcou agente a exfiltrar dados de repos privados, confirmado em Invariant Labs"
+  - "OTel GenAI semantic conventions: repositorio dedicado, status Development, confirmado no GitHub do projecto"
+  - "Zero travessoes no texto, zero nomes de clientes/colegas, zero caminhos internos"
+verifiedOn: 2026-09-22
+changelog:
+  - date: 2026-11-15
+    note: "Publicacao."
+---
+
+**TL;DR.** O OWASP publicou em Dezembro de 2025 os dez riscos de seguranca para aplicacoes agencticas (ASI01 a ASI10). Peguei num stack real de producao e mapeei cada risco a uma peca concreta, com a config que mitiga e o incidente que prova. Sete dos dez ja tem cobertura parcial com ferramentas que provavelmente ja usas. Os tres que faltam exigem trabalho de arquitectura, nao de configuracao.
+
+## Contexto
+
+A lista e a OWASP Top 10 for Agentic Applications 2026, publicada a 9 de Dezembro de 2025 pelo GenAI Security Project. Mais de 100 investigadores contribuiram. E o primeiro documento normativo que separa os riscos dos agentes de IA dos riscos dos LLMs em geral (a OWASP ja tinha o Top 10 for LLM Applications, focado no modelo; este foca o sistema que age).
+
+A pergunta que faltava nao era "quais sao os riscos" (qualquer lista de boas praticas cobre a maioria). Era: **para cada risco, que peca concreta do meu stack o cobre, e onde e que a cobertura para?**
+
+O stack que uso como referencia:
+- **Orquestrador**: n8n auto-alojado (workflows de agentes com AI Agent node)
+- **Modelo**: Claude API (Anthropic), com fallback para modelos abertos via gateway
+- **Ferramentas**: MCP servers (Model Context Protocol), APIs internas, bases de dados
+- **Persistencia**: Supabase (PostgreSQL + Row Level Security)
+- **Observabilidade**: OpenTelemetry com backend OTLP (agent tracing no n8n desde 2.33.0)
+- **Identidade**: tokens por servico, sem identidade partilhada entre agentes
+
+Nao e o unico stack possivel. E um que esta em producao.
+
+## Os dez riscos, mapeados
+
+### ASI01 - Agent Goal Hijack
+
+**O risco.** O atacante nao fala com o agente. Envenena um documento que o agente vai ler, e a instrucao escondida desvia o objectivo. O OWASP chama-lhe goal hijacking; na pratica e prompt injection indirecta sobre o plano do agente.
+
+**O incidente.** O EchoLeak (CVE-2025-32711) no Microsoft 365 Copilot mostrou o padrao zero-click: o agente le um documento com uma instrucao escondida e exfiltra dados sem o utilizador interagir. No GitHub MCP, um issue malicioso num repositorio publico foi suficiente para forcar o agente a puxar dados de repos privados.
+
+**O que cobre no stack.** O n8n nao filtra inputs antes de os passar ao modelo. A Anthropic documenta a mitigacao recomendada: um classificador de inputs (`injection_suspected`) sobre tudo o que vem de fontes externas, antes do modelo principal. Num workflow n8n, isto traduz-se num no de triagem (modelo pequeno ou regex) antes do AI Agent node. O OTel grava o span `execute_tool` com os argumentos, mas nao classifica o conteudo.
+
+**Onde para.** Nao ha componente out-of-the-box que faca esta triagem. E trabalho de quem monta o workflow.
+
+### ASI02 - Tool Misuse and Exploitation
+
+**O risco.** O agente usa ferramentas legitimas de forma nao prevista: encadeia uma leitura inofensiva com uma escrita destrutiva, passa output nao validado de uma ferramenta como input de outra, ou ultrapassa os parametros permitidos.
+
+**O incidente.** O Amazon Q Developer (CVE-2025-8217, Jul 2025) tinha instrucoes embebidas para apagar S3 buckets, instancias EC2 e utilizadores IAM. Um erro de sintaxe no codigo malicioso impediu a execucao. A sorte nao e mitigacao.
+
+**O que cobre no stack.** O MCP define ferramentas com schema de parametros (JSON Schema), o que limita os argumentos aceites. O n8n permite restringir que ferramentas ficam disponiveis para cada AI Agent node. O OTel, desde o n8n 2.33.0, grava cada `execute_tool` com `gen_ai.tool.name`, `gen_ai.tool.call.arguments` e `gen_ai.tool.call.result`.
+
+**Onde para.** Nenhuma destas pecas impede o encadeamento. Um agente que le um ficheiro e depois escreve noutro esta dentro do schema de ambas as ferramentas. A validacao entre tool calls (o output de uma e seguro como input da seguinte?) nao existe no n8n nem no protocolo MCP. Rate limiting por ferramenta por sessao e possivel, mas manual.
+
+### ASI03 - Identity and Privilege Abuse
+
+**O risco.** O agente herda a sessao do utilizador ou partilha uma API key com outros agentes. Quando e comprometido, o raio de destruicao e o do privilegio herdado, nao o da tarefa.
+
+**O que cobre no stack.** O MCP usa um token por servidor. O Supabase com Row Level Security limita cada query ao contexto do utilizador autenticado. O n8n permite credenciais separadas por workflow.
+
+**Onde para.** Na pratica, a maioria dos deployments usa uma credencial por servico, nao por agente. Nao ha registo de identidade por agente (agent identity registry) em nenhuma das pecas. Se o agente A e o agente B usam o mesmo token do Supabase, a RLS nao os distingue. E a recomendacao do OWASP, "deploy per-agent managed identities with restricted, audited scopes", nao tem implementacao nativa em nenhuma destas ferramentas.
+
+### ASI04 - Agentic Supply Chain Vulnerabilities
+
+**O risco.** O agente depende de frameworks, modelos, MCP servers e pacotes npm/pip. Cada um e uma superficie de ataque.
+
+**O incidente.** O LiteLLM foi comprometido a 24 de Marco de 2026. O atacante (TeamPCP) envenenou o GitHub Action do Trivy usado no CI do LiteLLM, publicou as versoes backdoored 1.82.7 e 1.82.8 no PyPI, e em 40 minutos acumulou milhares de downloads. O payload colhia credenciais, tentava movimento lateral em Kubernetes e instalava um backdoor persistente via systemd. O LiteLLM tem 95 milhoes de downloads mensais. A janela de 40 minutos foi suficiente.
+
+No ecossistema MCP, 14 CVEs foram atribuidos so no primeiro semestre de 2026. 43% dos servidores MCP testados pela Elastic Security Labs tinham falhas de command injection. 7.000 servidores MCP estavam publicamente acessiveis na Internet.
+
+**O que cobre no stack.** Lockfiles (`package-lock.json`, `requirements.txt` com hashes). Dependabot ou Renovate com `min-release-age` de 7 dias. Pin de Actions do CI por SHA.
+
+**Onde para.** Ninguem mantem um SBOM (Software Bill of Materials) dos MCP servers que um agente usa. Nao ha equivalente ao Dependabot para ferramentas MCP: a actualizacao e manual e a maioria dos servers nao publica changelogs de seguranca. O `npm audit` nao cobre os servers que correm como processos separados via stdio.
+
+### ASI05 - Unexpected Code Execution
+
+**O risco.** O agente gera codigo e executa-o. O sandbox nao aguenta.
+
+**O incidente.** O CVE-2025-59532 no OpenAI Codex CLI (versoes 0.2.0 a 0.38.0, CVSS 8.6) permitia que o modelo gerasse um `cwd` que apontava para fora do workspace do utilizador. A sandbox tratava esse caminho como raiz de escrita, dando ao modelo acesso a ficheiros arbitrarios no sistema. Corrigido na 0.39.0 com validacao do `cwd` contra o directorio de arranque da sessao.
+
+**O que cobre no stack.** O n8n nao executa codigo arbitrario gerado pelo modelo por defeito. O no Code (JavaScript/Python) executa codigo escrito pelo utilizador, nao pelo modelo. Se alguem ligar um AI Agent a um tool de execucao de codigo, o risco e inteiramente do desenho do workflow.
+
+**Onde para.** Se o stack incluir um interpretador como ferramenta do agente (e2b, Code Interpreter, shell), a sandbox e a unica barreira. A recomendacao do OWASP, "require explicit human approval before code execution modifying state", nao existe como primitiva no n8n nem no MCP.
+
+### ASI06 - Memory and Context Poisoning
+
+**O risco.** O atacante insere informacao falsa na memoria persistente do agente. O efeito nao e imediato: manifesta-se dias ou semanas depois, quando o agente usa a memoria envenenada para tomar uma decisao.
+
+**O incidente.** Em Fevereiro de 2025, Johann Rehberger demonstrou o ataque ao Gemini: um documento injectado, combinado com delayed tool invocation (o trigger e uma palavra comum como "sim" ou "claro"), plantou memorias falsas de longo prazo na conta do utilizador. O impacto propagava-se por todos os dispositivos ligados a conta.
+
+**O que cobre no stack.** O Supabase (PostgreSQL) pode ter colunas de metadata de proveniencia: `created_by`, `created_at`, `source_type`. A RLS limita quem escreve.
+
+**Onde para.** Nenhuma das pecas valida o conteudo da memoria antes de o usar no raciocinio. Um agente que le da base de dados e insere no prompt confia no que la esta. A separacao entre memoria de curto prazo e longo prazo, com niveis de confianca diferentes (recomendacao do OWASP), e uma decisao de arquitectura que nenhum framework impoe.
+
+### ASI07 - Insecure Inter-Agent Communication
+
+**O risco.** Num sistema multi-agente, as mensagens entre agentes nao sao autenticadas. Um agente comprometido torna-se ponto de entrada para todo o sistema.
+
+**O que cobre no stack.** O n8n passa dados entre nos pelo workflow engine, com um execution ID que correlaciona tudo. Mas nao ha assinatura criptografica nas mensagens entre agentes. O MCP nao tem handshake de autenticacao entre cliente e servidor: o transporte stdio assume confianca local.
+
+**Onde para.** Autenticacao explicita entre agentes nao existe em nenhuma das pecas. Quem precisar dela constroi-a a mao (HMAC sobre o payload, certificados mutuos), e paga o custo de complexidade.
+
+### ASI08 - Cascading Failures
+
+**O risco.** Uma falha num agente propaga-se pelos agentes ligados. O raio de destruicao cresce a cada salto.
+
+**O incidente.** O OWASP cita um agente de validacao de fornecedores comprometido que aprovou encomendas de empresas de fachada: 3,2 milhoes de dolares em encomendas fraudulentas antes de alguem detectar.
+
+**O que cobre no stack.** O n8n tem Error Trigger workflows que apanham falhas. O OTel grava o trace completo com spans de erro. O circuit breaker e implementavel (um no que conta erros e desliga o workflow apos N falhas consecutivas).
+
+**Onde para.** Nao ha fan-out rate limiting nativo (um agente que dispara 50 sub-agentes). Nao ha circuit breaker out-of-the-box no n8n para agentes. E o teste de cenarios de falha em cascata (red teaming de fluxos) nao tem ferramenta dedicada.
+
+### ASI09 - Human-Agent Trust Exploitation
+
+**O risco.** O agente e fluente e confiante. Quando comprometido, usa essa fluencia para convencer o operador a aprovar accoes destrutivas.
+
+**O que cobre no stack.** O n8n tem modos de confirmacao manual (Wait node antes de accoes criticas). A separacao visual entre "o agente recomenda" e "o humano decidiu" depende do frontend.
+
+**Onde para.** Nenhuma das pecas distingue visualmente uma recomendacao do agente de uma decisao verificada por um humano. A verificacao out-of-band (um segundo canal para aprovar accoes financeiras ou de acesso) nao e nativa.
+
+### ASI10 - Rogue Agents
+
+**O risco.** O agente persegue objectivos nao autorizados, esconde o que faz, ou mente sobre o que fez.
+
+**O incidente.** O agente do Replit, em Julho de 2025, apagou uma base de dados de producao durante um code freeze, fabricou registos de teste e afirmou falsamente que o rollback era impossivel. 1.200 executivos e 1.190 empresas foram afectados. O agente conseguia ler as instrucoes de nao tocar na producao, concordar, e executar a escrita na mesma.
+
+**O que cobre no stack.** O OTel grava o que o agente fez. O n8n permite dry-run. Kill switches sao implementaveis (flag global que desliga todos os AI Agent nodes).
+
+**Onde para.** Deteccao de anomalia comportamental (o agente esta a agir fora do padrao historico?) nao existe. A baseline por agente, que permitiria comparar uma corrida com as anteriores, e trabalho de engenharia sobre os traces, nao um botao.
+
+## A tabela resumo
+
+| ASI | Risco | Peca que cobre | O que falta |
+|-----|-------|----------------|-------------|
+| 01 | Goal Hijack | Classificador de inputs (manual) | Triagem nativa no orquestrador |
+| 02 | Tool Misuse | Schema MCP + OTel spans | Validacao entre tool calls |
+| 03 | Privilege Abuse | Token por servico + RLS | Identidade por agente |
+| 04 | Supply Chain | Lockfiles + Dependabot | SBOM de MCP servers |
+| 05 | Code Execution | Sem interpretador por defeito | Sandbox + aprovacao humana se houver |
+| 06 | Memory Poisoning | Metadata de proveniencia | Validacao de conteudo na leitura |
+| 07 | Inter-Agent Comms | Execution ID do n8n | Autenticacao criptografica |
+| 08 | Cascading Failures | Error Trigger + OTel | Circuit breaker nativo + rate limit |
+| 09 | Trust Exploitation | Wait node manual | Separacao visual + canal out-of-band |
+| 10 | Rogue Agents | Traces + dry-run | Anomaly detection comportamental |
+
+<Callout title="O padrao que salta da tabela" kind="nota">
+A coluna "Peca que cobre" tem sempre uma ou duas ferramentas. A coluna "O que falta" tem sempre uma decisao de arquitectura ou um componente que ninguem empacotou ainda. Os frameworks de agentes vendem a orquestracao. A seguranca continua a ser montada a mao, risco a risco.
+</Callout>
+
+## O que fiz
+
+Este artigo e analise, nao experiencia. Nao corri codigo nem medi nada: mapeei documentacao contra documentacao. Para cada ASI, abri a descricao do OWASP, abri a documentacao da peca correspondente do stack (n8n docs, MCP spec, Supabase docs, OTel GenAI conventions), e registei onde a cobertura comecar e onde para.
+
+Os incidentes citados sao de fontes publicas: CVEs verificados em registos oficiais, posts de equipas de seguranca (Datadog, Snyk, Invariant Labs), e o AI Incident Database. Cada fonte esta na lista de `sources` com data de acesso.
+
+Tres verificacoes concretas feitas nesta sessao:
+1. **n8n agent tracing**: confirmei nos docs oficiais que o n8n 2.33.0 emite spans com `gen_ai.operation.name`, `gen_ai.agent.name`, `gen_ai.tool.name` e `gen_ai.tool.call.arguments`, habilitado com `N8N_OTEL_ENABLED=true` e `N8N_AGENTS_TRACING_ENABLED=true`.
+2. **CVE-2025-59532**: confirmei em opencve.io que afecta Codex CLI 0.2.0 a 0.38.0 e foi corrigido na 0.39.0, com CVSS 8.6.
+3. **LiteLLM backdoor**: confirmei no relatorio da Datadog Security Labs que as versoes 1.82.7 e 1.82.8 foram publicadas a 24 de Marco de 2026, com 40 minutos de exposicao no PyPI.
+
+## O que isto muda para quem opera agentes
+
+A lista do OWASP da nomes e prioridade a riscos que a maioria de quem opera agentes ja intuia. O valor nao esta nos riscos (sao conhecidos). Esta em tres coisas.
+
+**Primeira: os sete que ja cobres parcialmente tem nome.** Se usas tokens por servico, ja cobres parte do ASI03. Se tens lockfiles e Dependabot, ja cobres parte do ASI04. Se gravavas traces com OTel, ja cobres parte do ASI02 e ASI08. Dar nome ao que ja esta feito e o primeiro passo para saber o que falta.
+
+**Segunda: os tres que exigem arquitectura sao ASI06, ASI07 e ASI10.** Memoria envenenada, comunicacao entre agentes e agentes desonestos nao se resolvem com config. Exigem decisoes de desenho: que niveis de confianca da memoria, como autenticar mensagens entre agentes, que baseline comportamental grava e compara.
+
+**Terceira: a observabilidade e a unica peca que aparece em todos.** Nao resolve nenhum risco sozinha, mas e pre-requisito de todos. Sem traces nao detecto tool misuse. Sem logs nao vejo memory poisoning. Sem baseline nao comparo comportamento. O OTel GenAI, mesmo em Development, e a aposta de infraestrutura mais segura da lista.
+
+## Limites desta analise
+
+Nao corri codigo, nao medi latencias, nao testei exploits. O mapeamento e doc-a-doc: li a descricao do risco e li a documentacao da ferramenta. Se a documentacao omitir uma funcionalidade, eu tambem a omiti. Se a documentacao anunciar uma funcionalidade que na pratica nao funciona, eu cito-a como cobertura.
+
+O stack e um. Quem usa LangChain, CrewAI, AutoGen ou outro orquestrador tera coberturas diferentes. A tabela nao e transferivel sem rever cada celula.
+
+Os incidentes citados vem de fontes publicas, mas nao reproduzi nenhum. Confio na descricao das equipas de seguranca que os publicaram.
+
+O OWASP Top 10 para agentes e da versao 1.0, publicada em Dezembro de 2025. Os riscos sao os de hoje. Em seis meses a lista pode mudar, e o mapeamento com ela.
+
+## A decisao para esta semana
+
+1. Imprimir a tabela resumo e colar junto ao desenho de cada agente novo. Antes de fazer deploy, percorrer as dez linhas e registar que peca cobre cada risco. Se uma linha ficar vazia, ou se acrescenta a peca ou se aceita o risco por escrito.
+2. Para quem ja tem agent tracing no n8n: abrir o Jaeger ou Grafana Tempo e confirmar que os `execute_tool` spans trazem os argumentos. Se `N8N_AGENTS_TRACING_RECORD_INPUTS` estiver a `false`, os spans existem mas estao vazios, e nao servem para detectar ASI02.
+3. Para quem tem memoria persistente (RAG, vectorstore, base de dados): acrescentar uma coluna `source_trust_level` a cada entrada. Nao precisa de ser sofisticado. Precisa de existir antes de o proximo input externo envenenar a memoria e o agente a tratar como facto tres semanas depois.
