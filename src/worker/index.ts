@@ -44,7 +44,7 @@ async function post(stub: DurableObjectStub, path: string, body: unknown): Promi
 	return stub.fetch(`https://obs${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 }
 
-export default {
+const worker = {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname;
@@ -108,7 +108,11 @@ export default {
 			}
 			const rate = await (await post(stub, '/rate', { ip: `scan:${ip}`, max: SCAN_MAX, window_s: 3600 })).json<{ allowed: boolean }>();
 			if (!rate.allowed) return json({ error: 'rate_limited', message: 'Limite de 10 análises por hora.' }, 429, { 'Retry-After': '3600' });
-			const result = await scan(target);
+			const own = new URL(env.SITE_URL).hostname;
+			const via = target.hostname === own
+				? (u: string, init?: RequestInit) => new URL(u).hostname === own ? worker.fetch(new Request(u, init), env, ctx) : fetch(u, init)
+				: undefined;
+			const result = await scan(target, via);
 			ctx.waitUntil(post(stub, '/scan-log', { ip, host: target.hostname, score: result.score, result, cached: false }));
 			return json({ cached: false, ...result }, 200, { 'cache-control': 'no-store' });
 		}
@@ -132,6 +136,8 @@ export default {
 		return res;
 	},
 };
+
+export default worker;
 
 const CORS: Record<string, string> = {
 	'Access-Control-Allow-Origin': '*',

@@ -37,10 +37,12 @@ export function normaliseTarget(input: string): URL | null {
 }
 
 interface Got { status: number; ct: string; text: string; ms: number; err?: string; }
+export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
+let fetcher: Fetcher = (u, i) => fetch(u, i);
 async function get(url: string, init: RequestInit = {}): Promise<Got> {
 	const t0 = Date.now();
 	try {
-		const r = await fetch(url, { ...init, redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': UA, accept: '*/*', ...(init.headers || {}) } });
+		const r = await fetcher(url, { ...init, redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': UA, accept: '*/*', ...(init.headers || {}) } });
 		const reader = r.body?.getReader();
 		const chunks: Uint8Array[] = [];
 		let n = 0;
@@ -133,7 +135,10 @@ const INJECTION = /(ignore (all |any )?(previous|prior) instructions|disregard (
 const ACTION_TOOL = /(checkout|cart|order|book|submit|request_|schedule|contact|lead|pay|purchase|create_|update_|cancel_|complete_)/i;
 const READ_TOOL = /^(search|get_|list_|lookup|describe|check_|find|read)/i;
 
-export async function scan(target: URL): Promise<ScanResult> {
+/** `via` permite analisar o próprio site: um Worker não consegue fazer fetch à própria zona (522),
+    por isso os pedidos ao próprio domínio passam pelo handler do Worker em vez da rede. */
+export async function scan(target: URL, via?: Fetcher): Promise<ScanResult> {
+	fetcher = via ?? ((u, i) => fetch(u, i));
 	const base = target.origin;
 	const [robotsG, llms, llmsFull, agents, mcpJ, ucpJ] = await Promise.all([
 		get(`${base}/robots.txt`), get(`${base}/llms.txt`), get(`${base}/llms-full.txt`),
@@ -163,7 +168,9 @@ export async function scan(target: URL): Promise<ScanResult> {
 
 	/* L1 */
 	const hasLlms = isTextFile(llms); const hasFull = isTextFile(llmsFull); const hasAgents = isTextFile(agents);
-	const injected = [llms, llmsFull, agents].filter((g) => isTextFile(g) && INJECTION.test(g.text)).length > 0;
+	// Só nos ficheiros curtos de instruções: o llms-full.txt traz o texto dos artigos, e num site que escreve
+	// sobre segurança os exemplos de injecção citados davam falso positivo.
+	const injected = [llms, agents].filter((g) => isTextFile(g) && INJECTION.test(g.text)).length > 0;
 	const L1: Layer = {
 		id: 'L1', name: { pt: 'Contexto (llms.txt, agents.md)', en: 'Context (llms.txt, agents.md)' }, max: 10, applicable: true,
 		score: (hasLlms ? 5 : 0) + (hasAgents ? 3 : 0) + (hasFull ? 2 : 0) - (injected ? 5 : 0),
