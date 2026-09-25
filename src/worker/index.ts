@@ -12,6 +12,7 @@ import { AgentObs } from './obs';
 import { classify, isAiReferral } from './bots';
 import { handleMcp } from './mcp';
 import { sha256Hex } from './util';
+import { normaliseTarget, scan } from './scan';
 
 export { AgentObs };
 
@@ -24,6 +25,12 @@ export interface Env {
 
 const RATE_MAX = 60;           // chamadas por janela, por ip_hash
 const RATE_WINDOW_S = 600;
+const SCAN_MAX = 10;           // scans por hora, por ip_hash
+const SCAN_CACHE_S = 1800;     // o mesmo domínio devolve o resultado guardado durante 30 min
+
+/* Canários: um link que só existe num ficheiro para máquinas. Um pedido a este caminho prova que
+   quem o fez leu aquele ficheiro. Anunciados como tal no agents.md (transparência, não armadilha). */
+const CANARIES = new Set(['llms-txt', 'llms-full', 'agents-md', 'mcp-json', 'agent-index']);
 
 function obs(env: Env): DurableObjectStub {
 	return env.AGENT_OBS.get(env.AGENT_OBS.idFromName('main'));
@@ -76,6 +83,34 @@ export default {
 			ctx.waitUntil(post(stub, '/log-request', { ...result.log, ip, user_agent: ua.slice(0, 500), agent_profile: request.headers.get('x-agent-profile'), latency_ms: Date.now() - started }));
 			if (result.contact) ctx.waitUntil(post(stub, '/contact', result.contact));
 			return json(result.body, result.status ?? 200, CORS);
+		}
+
+		// ── canários ──────────────────────────────────────────────────────────
+		const can = path.match(/^\/c\/([a-z-]+)\/?$/);
+		if (can && CANARIES.has(can[1])) {
+			const bot = classify(ua, request.headers);
+			ctx.waitUntil(post(stub, '/log-hit', {
+				ip, path, ua: ua.slice(0, 300), etapa: bot ? bot.etapa : 'c', operador: bot?.operador ?? null, bot: bot?.bot ?? null,
+				canario: can[1], country: (cf.country as string) ?? null, asn: (cf.asn as number) ?? null, signed_agent: request.headers.has('signature-agent'),
+			}));
+			return new Response(null, { status: 302, headers: { location: `${env.SITE_URL}/`, 'x-robots-tag': 'noindex', 'cache-control': 'no-store' } });
+		}
+
+		// ── Scanner Agent-Ready ───────────────────────────────────────────────
+		if (path === '/api/scan') {
+			if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405, { Allow: 'GET' });
+			const target = normaliseTarget(url.searchParams.get('url') || '');
+			if (!target) return json({ error: 'invalid_url', message: 'Indica um domínio público, por exemplo exemplo.pt' }, 400);
+			const cached = await (await post(stub, '/scan-cache', { host: target.hostname, ttl_s: SCAN_CACHE_S })).json<{ hit: boolean; ts?: string; result?: unknown }>();
+			if (cached.hit) {
+				ctx.waitUntil(post(stub, '/scan-log', { ip, host: target.hostname, score: (cached.result as { score?: number })?.score ?? null, cached: true }));
+				return json({ cached: true, cached_at: cached.ts, ...(cached.result as object) }, 200, { 'cache-control': 'no-store' });
+			}
+			const rate = await (await post(stub, '/rate', { ip: `scan:${ip}`, max: SCAN_MAX, window_s: 3600 })).json<{ allowed: boolean }>();
+			if (!rate.allowed) return json({ error: 'rate_limited', message: 'Limite de 10 análises por hora.' }, 429, { 'Retry-After': '3600' });
+			const result = await scan(target);
+			ctx.waitUntil(post(stub, '/scan-log', { ip, host: target.hostname, score: result.score, result, cached: false }));
+			return json({ cached: false, ...result }, 200, { 'cache-control': 'no-store' });
 		}
 
 		// ── observabilidade por etapa, depois entrega o asset ─────────────────

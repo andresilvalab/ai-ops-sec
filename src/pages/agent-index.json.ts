@@ -32,6 +32,7 @@ export async function GET({ site }: APIContext) {
 			tagline: { pt: SITE.pt.tagline, en: SITE.en.tagline },
 			description: { pt: SITE.pt.description, en: SITE.en.description },
 			author: { name: AUTHOR.name, github: AUTHOR.github, linkedin: AUTHOR.linkedin, company: AUTHOR.company },
+			canary: `${url}/c/agent-index/`,
 		},
 		areas: AREAS.map((a) => ({ key: a.key, name: a.name, short: a.short, description: a.description, topics: a.topics })),
 		articles: posts.map((p) => ({

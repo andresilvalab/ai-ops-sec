@@ -81,7 +81,7 @@ const L = (v: unknown): Lang => (v === 'en' ? 'en' : 'pt');
 
 export interface McpResult {
 	body: unknown; status?: number;
-	log: { tool: string | null; method: string; status: 'ok' | 'error'; error_code?: string | null; query_text?: string | null; lang?: string | null };
+	log: { tool: string | null; method: string; status: 'ok' | 'error'; error_code?: string | null; query_text?: string | null; lang?: string | null; results_n?: number | null; top_score?: number | null };
 	contact?: Record<string, unknown>;
 }
 
@@ -128,10 +128,13 @@ export async function handleMcp(request: Request, env: Env, ctx: { ip: string })
 					out = xs.map(({ text: _t, ...rest }) => rest);
 				} else if (name === 'search') {
 					log.query_text = String(args.query).slice(0, 500);
-					out = search(index, String(args.query), args.lang ? lang : null, args.limit ?? 5);
+					const r = search(index, String(args.query), args.lang ? lang : null, args.limit ?? 5);
+					log.results_n = r.results.length;
+					log.top_score = r.results[0]?.score ?? 0;
+					out = r;
 				} else if (name === 'get_article') {
 					const a = index.articles.find((x) => x.slug === args.slug && (!args.lang || x.lang === lang)) ?? index.articles.find((x) => x.slug === args.slug);
-					if (!a) return { body: rpcError(id, -32602, `No article '${args.slug}'`, { code: 'not_found' }), log: { ...log, status: 'error', error_code: 'not_found' } };
+					if (!a) return { body: rpcError(id, -32602, `No article '${args.slug}'`, { code: 'not_found' }), log: { ...log, status: 'error', error_code: 'not_found', query_text: String(args.slug).slice(0, 200), results_n: 0 } };
 					out = a;
 				} else if (name === 'get_policies') out = policies(lang, env);
 				return { body: rpcOk(id, text(out)), log };

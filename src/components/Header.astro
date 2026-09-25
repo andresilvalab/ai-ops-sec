@@ -25,6 +25,7 @@ const isActive = (p: string) => path.startsWith(href(locale, p));
 			<a href={href(locale, 'areas')} class:list={{ active: isActive('areas') }}>{ui.nav_areas}</a>
 			<a href={href(locale, 'blog')} class:list={{ active: isActive('blog') }}>{ui.nav_blog}</a>
 			<a href={href(locale, 'tags')} class:list={{ active: isActive('tags') }}>{ui.nav_tags}</a>
+			<a href={href(locale, 'scanner')} class:list={{ active: isActive('scanner') }}>{ui.nav_scanner}</a>
 			<a href={href(locale, 'about')} class:list={{ active: isActive('about') }}>{ui.nav_about}</a>
 		</nav>
 		<div class="tools">

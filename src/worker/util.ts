@@ -19,3 +19,13 @@ export function tokens(s: string): Set<string> {
 	}
 	return out;
 }
+
+/** JSON canónico: chaves ordenadas em todos os níveis, sem espaços. Igual ao
+    json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False) do Python,
+    que é quem verifica as provas de consentimento na Torre. */
+export function canonical(v: unknown): string {
+	if (v === null || typeof v !== 'object') return JSON.stringify(v ?? null);
+	if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+	const o = v as Record<string, unknown>;
+	return `{${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}:${canonical(o[k] === undefined ? null : o[k])}`).join(',')}}`;
+}

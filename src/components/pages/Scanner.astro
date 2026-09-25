@@ -1,0 +1,125 @@
+---
+/* Scanner Agent-Ready: a ferramenta pública do laboratório. Mede de fora as seis camadas que decidem
+   se um site é legível, citável e operável por agentes de IA. O motor corre no Worker (/api/scan);
+   esta página só desenha o resultado, com textContent (nunca HTML vindo do site analisado). */
+import Base from '../../layouts/Base.astro';
+import type { Locale } from '../../consts';
+import { site } from '../../lib/i18n';
+
+interface Props {
+	locale: Locale;
+}
+const { locale } = Astro.props;
+const pt = locale === 'pt';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const title = pt ? 'Scanner Agent-Ready' : 'Agent Ready Scanner';
+const description = pt
+	? 'Mede, camada a camada, se um site é legível, citável e operável por agentes de IA: robots.txt, llms.txt, JSON-LD, manifesto, servidor MCP e consentimento.'
+	: 'Measures, layer by layer, whether a site is readable, citable and operable by AI agents: robots.txt, llms.txt, JSON-LD, manifest, MCP server and consent.';
+const layers = pt
+	? [
+			['L0', 'Acesso', 'robots.txt: os bots de resposta entram? Treino é decisão à parte.'],
+			['L1', 'Contexto', 'llms.txt, llms-full.txt e agents.md, sem instruções dirigidas a modelos.'],
+			['L2', 'Facto', 'JSON-LD na página inicial: entidade, oferta, preços coerentes entre camadas.'],
+			['L3', 'Capacidade', 'Manifesto: /.well-known/ucp ou /.well-known/mcp.json.'],
+			['L4', 'Operação', 'Servidor MCP que responde a tools/list.'],
+			['L5', 'Consentimento', 'Tools de acção com aprovação humana declarada.'],
+		]
+	: [
+			['L0', 'Access', 'robots.txt: are answer bots allowed? Training is a separate decision.'],
+			['L1', 'Context', 'llms.txt, llms-full.txt and agents.md, with no model-directed instructions.'],
+			['L2', 'Fact', 'JSON-LD on the home page: entity, offer, prices consistent across layers.'],
+			['L3', 'Capability', 'Manifest: /.well-known/ucp or /.well-known/mcp.json.'],
+			['L4', 'Operation', 'An MCP server that answers tools/list.'],
+			['L5', 'Consent', 'Action tools with declared human approval.'],
+		];
+---
+
+<Base locale={locale} title={title} description={description} alternatePath="scanner">
+	<article class="scanner">
+		<header class="head reveal" style="--i:0">
+			<p class="seq-label">//scanner</p>
+			<h1>{pt ? <>O teu site está pronto para <em>agentes de IA</em>?</> : <>Is your site ready for <em>AI agents</em>?</>}</h1>
+			<p class="lede">{description}</p>
+		</header>
+
+		<form id="scan-form" class="card scan-form" data-lang={locale} data-api={`${base}/api/scan`} novalidate>
+			<label for="scan-url" class="sr-only">{pt ? 'Domínio a analisar' : 'Domain to scan'}</label>
+			<input id="scan-url" name="url" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder={pt ? 'exemplo.pt' : 'example.com'} required maxlength="300" />
+			<button type="submit" class="btn" id="scan-go">{pt ? 'Analisar' : 'Scan'}</button>
+		</form>
+		<p id="scan-status" class="status mono" role="status" aria-live="polite"></p>
+
+		<section id="scan-result" class="result" hidden>
+			<div class="card total">
+				<div>
+					<p class="seq-label" id="scan-host"></p>
+					<p class="big mono" id="scan-score"></p>
+					<p class="muted mono" id="scan-when"></p>
+				</div>
+				<div class="bars" id="scan-bars"></div>
+			</div>
+			<div id="scan-layers" class="layers"></div>
+			<div class="card recs">
+				<h2>{pt ? 'O que fazer primeiro' : 'What to fix first'}</h2>
+				<ol id="scan-recs"></ol>
+			</div>
+			<p class="muted method" id="scan-method"></p>
+		</section>
+
+		<section class="how">
+			<h2>{pt ? 'As seis camadas' : 'The six layers'}</h2>
+			<div class="grid">
+				{layers.map(([id, name, body]) => (
+					<div class="card layer-def">
+						<p class="seq-label">//{id}</p>
+						<h3>{name}</h3>
+						<p>{body}</p>
+					</div>
+				))}
+			</div>
+			<p class="muted">
+				{pt
+					? 'O scanner usa identidade própria e nunca finge ser outro bot: o acesso de cada bot lê-se do robots.txt. Bloqueios de firewall não são testados. Nunca se chamam tools de acção em sites de terceiros. Os resultados ficam em cache 30 minutos por domínio; limite de 10 análises por hora.'
+					: 'The scanner uses its own identity and never impersonates other bots: each bot\'s access is read from robots.txt. Firewall blocks are not tested. Action tools are never called on third-party sites. Results are cached for 30 minutes per domain; limit of 10 scans per hour.'}
+			</p>
+		</section>
+	</article>
+	<script src={`${base}/js/scanner.js`} defer is:inline></script>
+</Base>
+
+<style>
+	.scanner { display: grid; gap: 1.25rem; }
+	.head h1 em { font-style: normal; color: var(--accent); }
+	.scan-form { display: flex; gap: 0.6rem; padding: 0.75rem; }
+	.scan-form input {
+		flex: 1; min-width: 0; background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+		border-radius: 10px; padding: 0.7rem 0.9rem; font: 500 15px var(--font-mono);
+	}
+	.scan-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+	.status { min-height: 1.2em; font-size: 12px; color: var(--muted); }
+	.status.err { color: var(--neg, #ff5e6c); }
+	.total { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 1.5rem; padding: 1.25rem; align-items: center; }
+	.big { font-size: 56px; font-weight: 600; line-height: 1; margin: 0.25rem 0; }
+	.bars { display: grid; gap: 0.45rem; }
+	.barrow { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr) 4.2rem; gap: 0.6rem; align-items: center; font: 500 12px var(--font-mono); }
+	.track { height: 8px; border-radius: 999px; background: var(--surface3, #1e2029); overflow: hidden; }
+	.fill { height: 100%; border-radius: 999px; background: var(--accent); }
+	.layers { display: grid; gap: 0.75rem; }
+	.layer { padding: 1rem 1.2rem; }
+	.layer h3 { margin: 0 0 0.5rem; font-size: 15px; display: flex; justify-content: space-between; gap: 1rem; }
+	.layer ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.35rem; font-size: 13.5px; }
+	.layer li { display: grid; grid-template-columns: 1.2rem minmax(0, 1fr); gap: 0.4rem; }
+	.layer .d { color: var(--muted); font: 12px var(--font-mono); overflow-wrap: anywhere; }
+	.ok { color: var(--accent); } .no { color: var(--neg, #ff5e6c); } .na { color: var(--muted); }
+	.recs { padding: 1rem 1.2rem; }
+	.recs h2, .how h2 { font-size: 16px; margin: 0 0 0.6rem; }
+	.recs ol { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.4rem; font-size: 14px; }
+	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; }
+	.layer-def { padding: 1rem; }
+	.layer-def h3 { margin: 0.2rem 0; font-size: 15px; }
+	.layer-def p { margin: 0; font-size: 13.5px; color: var(--muted); }
+	.muted { color: var(--muted); font-size: 12.5px; }
+	.method { font-size: 12px; }
+	@media (max-width: 640px) { .total { grid-template-columns: 1fr; } .big { font-size: 44px; } }
+</style>
