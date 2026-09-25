@@ -32,6 +32,7 @@ export const UI = {
 	pt: {
 		nav_blog: 'Artigos',
 		nav_about: 'Sobre',
+		nav_scanner: 'Scanner',
 		nav_tags: 'Temas',
 		nav_areas: 'Áreas',
 		areas_title: 'Áreas do laboratório',
@@ -85,6 +86,7 @@ export const UI = {
 	en: {
 		nav_blog: 'Articles',
 		nav_about: 'About',
+		nav_scanner: 'Scanner',
 		nav_tags: 'Topics',
 		nav_areas: 'Areas',
 		areas_title: 'Lab areas',

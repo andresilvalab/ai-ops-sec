@@ -29,6 +29,10 @@ export async function GET({ site }: APIContext) {
 		`- [RSS PT](${abs(href('pt', 'rss.xml'))})`,
 		`- [RSS EN](${abs(href('en', 'rss.xml'))})`,
 		`- [Source repository](${AUTHOR.repo})`,
+		`- [Agent Ready Scanner](${abs(href('en', 'scanner'))}): measure any site's readiness for AI agents, layer by layer`,
+		'',
+		'## Canary',
+		`- [Canary link for this file](${abs('/c/llms-txt/')}): requests to this URL are counted to learn which agents read llms.txt; it redirects to the home page. See /agents.md, section Transparency.`,
 		'',
 	].join('\n');
 	return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });

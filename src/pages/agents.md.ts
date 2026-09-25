@@ -22,6 +22,7 @@ ${url} é o laboratório de IA agêntica de ${AUTHOR.name}: artigos sobre como a
 - \`/rss.xml\` e \`/en/rss.xml\` — feeds
 - \`/sitemap-index.xml\` — mapa do site
 - \`/.well-known/security.txt\` — como reportar uma falha de segurança
+- \`/scanner/\` — Scanner Agent-Ready: mede a prontidão de qualquer site para agentes, camada a camada
 
 ### Descoberta para agentes
 
@@ -48,7 +49,9 @@ Fluxo recomendado: \`initialize\` → \`tools/list\` → \`get_entity\` / \`sear
 
 ### Transparência
 
-Este site não tem trackers nem cookies. Regista, com IP em hash (sal aleatório, fora do repositório): pedidos de crawlers de IA conhecidos, fetches accionados por perguntas de utilizadores, cliques vindos de assistentes (referer ou utm_source) e chamadas às tools MCP, incluindo as queries enviadas às tools de leitura. Não regista o prompt do utilizador: esse nunca chega ao site. Pedidos de contacto reais guardam nome, email, mensagem e a frase de consentimento.
+Este site não tem trackers nem cookies. Regista, com IP em hash (sal aleatório, fora do repositório): pedidos de crawlers de IA conhecidos, fetches accionados por perguntas de utilizadores, cliques vindos de assistentes (referer ou utm_source) e chamadas às tools MCP, incluindo as queries enviadas às tools de leitura. Não regista o prompt do utilizador: esse nunca chega ao site. Pedidos de contacto reais guardam nome, email, mensagem e a frase de consentimento, com um hash canónico encadeado ao pedido anterior (prova de consentimento verificável). A identidade declarada dos crawlers é verificada contra as listas oficiais de IPs de cada fornecedor.
+
+Canários: cada ficheiro para máquinas tem um link próprio (\`/c/llms-txt/\`, \`/c/llms-full/\`, \`/c/agents-md/\`, \`/c/mcp-json/\`, \`/c/agent-index/\`). Um pedido a esse link mostra que o ficheiro foi lido; redirecciona para a página inicial. Canário deste ficheiro: ${url}/c/agents-md/
 
 ## English
 
@@ -65,6 +68,7 @@ ${url} is ${AUTHOR.name}'s agentic AI lab: articles on how AI agents are built, 
 - \`/rss.xml\` and \`/en/rss.xml\` — feeds
 - \`/sitemap-index.xml\` — sitemap
 - \`/.well-known/security.txt\` — how to report a security issue
+- \`/en/scanner/\` — Agent Ready Scanner: measures any site's readiness for agents, layer by layer
 
 ### Agent discovery
 
@@ -91,7 +95,9 @@ Recommended flow: \`initialize\` → \`tools/list\` → \`get_entity\` / \`searc
 
 ### Transparency
 
-This site has no trackers and no cookies. It logs, with a hashed IP (random salt, outside the repository): requests from known AI crawlers, fetches triggered by user questions, clicks coming from assistants (referer or utm_source) and MCP tool calls, including the queries sent to read-only tools. It does not log the user's prompt: that never reaches the site. Real contact requests store name, email, message and the consent sentence.
+This site has no trackers and no cookies. It logs, with a hashed IP (random salt, outside the repository): requests from known AI crawlers, fetches triggered by user questions, clicks coming from assistants (referer or utm_source) and MCP tool calls, including the queries sent to read-only tools. It does not log the user's prompt: that never reaches the site. Real contact requests store name, email, message and the consent sentence, with a canonical hash chained to the previous request (verifiable consent proof). Crawlers' declared identity is checked against each vendor's official IP lists.
+
+Canaries: each machine-facing file has its own link (\`/c/llms-txt/\`, \`/c/llms-full/\`, \`/c/agents-md/\`, \`/c/mcp-json/\`, \`/c/agent-index/\`). A request to that link shows the file was read; it redirects to the home page. Canary for this file: ${url}/c/agents-md/
 `;
 	return new Response(body, { headers: { 'Content-Type': 'text/markdown; charset=utf-8' } });
 }

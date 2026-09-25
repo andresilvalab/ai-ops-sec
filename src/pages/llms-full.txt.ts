@@ -12,5 +12,6 @@ export async function GET({ site }: APIContext) {
 		if (p.data.sources.length) parts.push('Sources:', ...p.data.sources.map((s) => `- ${s.title}: ${s.url}`), '');
 	}
 	if (posts.length === 0) parts.push('(first article under review)');
+	parts.push('---', '', `Canary link for this file: ${new URL('/c/llms-full/', site)} (requests to it are counted to learn which agents read llms-full.txt; it redirects to the home page).`, '');
 	return new Response(parts.join('\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 }
