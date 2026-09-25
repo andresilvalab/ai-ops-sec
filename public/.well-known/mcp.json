@@ -1,0 +1,34 @@
+{
+  "name": "André Silva Lab",
+  "description": "Laboratório de IA agêntica, com prova: agentes de IA em produção, como se constroem, operam, avaliam, governam e atacam.",
+  "version": "0.1.0",
+  "homepage": "https://andresilvalab.com",
+  "endpoint": "https://andresilvalab.com/mcp",
+  "transport": "streamable-http",
+  "protocol_versions": ["2025-03-26", "2025-06-18", "2025-11-25", "2026-07-28"],
+  "auth": {
+    "tier": "anonymous",
+    "note": "read-only tools without auth; request_contact requires explicit human consent and defaults to dry_run"
+  },
+  "tools": [
+    { "name": "get_entity", "description": "Quem é o André Silva Lab: autor, posicionamento, licenças, feeds e políticas.", "requires_human_approval": false },
+    { "name": "list_areas", "description": "As áreas do laboratório com descrição e temas.", "requires_human_approval": false },
+    { "name": "list_articles", "description": "Artigos publicados por língua e área, mais recentes primeiro.", "requires_human_approval": false },
+    { "name": "search", "description": "Pesquisa determinística (sem LLM) nos artigos; devolve excertos e URL para citar.", "requires_human_approval": false },
+    { "name": "get_article", "description": "Texto completo de um artigo pelo slug, com fontes e histórico.", "requires_human_approval": false },
+    { "name": "get_policies", "description": "Licenças, regra de citação, o que fica registado e as regras para agentes.", "requires_human_approval": false },
+    { "name": "request_contact", "description": "Pedido de contacto com o autor em nome de uma pessoa que confirmou os dados. dry_run é true por defeito.", "requires_human_approval": true }
+  ],
+  "rate_limits": {
+    "calls": { "limit": 60, "window_seconds": 600, "scope": "per client" },
+    "on_exceed": "HTTP 429 with Retry-After and JSON-RPC error -32000 (data.code rate_limited)"
+  },
+  "policies": {
+    "license": "Text CC BY 4.0, code MIT. Cite by article URL and date.",
+    "human_approval": "Nenhum pedido de contacto é enviado sem confirmação explícita da pessoa",
+    "query_logging": "As queries enviadas às tools de leitura são registadas de forma anónima (IP em hash com sal aleatório) para melhorar o conteúdo. Visitas humanas não são registadas.",
+    "agents_md": "https://andresilvalab.com/agents.md",
+    "security": "https://andresilvalab.com/.well-known/security.txt"
+  },
+  "contact": "request_contact tool, or the author profile links at https://andresilvalab.com/about/"
+}

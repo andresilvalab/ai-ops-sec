@@ -38,7 +38,7 @@ jobs:
       - name: Ficheiros obrigatórios no output
         run: |
           set -e
-          for f in index.html en/index.html rss.xml en/rss.xml llms.txt llms-full.txt robots.txt sitemap-index.xml security.txt _headers pagefind/pagefind.js og/default-pt.png; do
+          for f in index.html en/index.html rss.xml en/rss.xml llms.txt llms-full.txt agents.md agent-index.json .well-known/mcp.json robots.txt sitemap-index.xml security.txt _headers pagefind/pagefind.js og/default-pt.png; do
             test -f "dist/$f" || { echo "falta dist/$f"; exit 1; }
           done
           echo "output completo"
