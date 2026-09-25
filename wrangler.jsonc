@@ -4,10 +4,24 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "ai-ops-sec",
 	"compatibility_date": "2026-09-01",
+	// Agent-Ready Stack (25-Set-2026): o Worker corre antes dos assets para registar bots de IA por
+	// etapa, servir o MCP em /mcp e exportar para a Torre. Estado num Durable Object com SQLite
+	// (plano Free), sem D1 nem KV: nada a criar fora do deploy.
+	"main": "src/worker/index.ts",
 	"assets": {
 		"directory": "./dist",
+		"binding": "ASSETS",
+		"run_worker_first": true,
 		"not_found_handling": "404-page",
 		"html_handling": "auto-trailing-slash"
+	},
+	"durable_objects": { "bindings": [{ "name": "AGENT_OBS", "class_name": "AgentObs" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentObs"] }],
+	"vars": {
+		"SITE_URL": "https://andresilvalab.com",
+		// sha256 do token de leitura do export, não o token: o Worker compara o hash do header com este
+		// valor e nunca guarda o segredo. O token vive no cofre do autor; rodar = novo hash + deploy.
+		"OPS_TOKEN_HASH": "276ee3858e52c0bf2297adb62b56624c8baae2024ae2cbcd52cac8d90c5a61aa" // gitleaks:allow
 	},
 	// Só o domínio canónico. www e andresilvalab.dev fazem 301 por Redirect Rules na zona
 	// (o _redirects dos static assets só aceita origens relativas, não domínios).
