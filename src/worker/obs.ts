@@ -117,6 +117,7 @@ export class AgentObs extends DurableObject {
 	   sai no export (`dropped_hits`), para a Torre saber que a contagem daquela hora é um piso. */
 	private budget = new Map<string, { n: number; until: number }>();
 	private dropped = 0;
+	private unauthorized = 0;   // tentativas de export sem token desde o ultimo arranque do objecto; nunca escritas
 	private within(key: string, max: number): boolean {
 		const now = Date.now();
 		let b = this.budget.get(key);
@@ -205,6 +206,10 @@ export class AgentObs extends DurableObject {
 					await this.ipHash(ip), body.cached ? 1 : 0);
 				return ok();
 			}
+			case '/count-unauthorized': {
+				this.unauthorized += 1;
+				return ok();
+			}
 			case '/export': {
 				/* Um cursor por tabela, (ts, id). O cursor único de antes avançava pelo máximo de todas as tabelas:
 				   se `requests` enchia a página antes de `hits`, os hits entre os dois cursores nunca saíam. Cada
@@ -234,6 +239,7 @@ export class AgentObs extends DurableObject {
 				return json({
 					generated_at: nowIso(), since, rows, hits, contacts, scans, cursors, more,
 					dropped_hits: ((await this.ctx.storage.get<number>('dropped_hits')) ?? 0) + (this.dropped % 50),
+					unauthorized_export_attempts: this.unauthorized,
 					ranges: { refreshed_at: rangesAt ? new Date(rangesAt).toISOString() : null, operators: rangesN },
 					next_since: last(rows, 'created_at') ?? last(hits, 'ts'),
 				});

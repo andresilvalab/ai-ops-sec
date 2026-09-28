@@ -63,7 +63,10 @@ const worker = {
 			const since = url.searchParams.get('since') || '';
 			const limit = Math.min(20000, Math.max(1, Number(url.searchParams.get('limit') || 5000) || 5000));
 			if (!ok || request.method !== 'GET' || !/^\d{4}-\d{2}-\d{2}/.test(since)) {
-				ctx.waitUntil(post(stub, '/log-request', { ip, tool: 'agent-obs-export', method: request.method, status: 'error', error_code: ok ? 'invalid_since' : 'unauthorized', user_agent: ua.slice(0, 500) }));
+				// Sem token: conta-se no DO em memoria (sem escrita). Antes cada tentativa era uma linha no SQLite, e
+				// qualquer pessoa com curl esgotava o orcamento diario de escritas do plano Free (auditoria de 28-Set).
+				if (ok) ctx.waitUntil(post(stub, '/log-request', { ip, tool: 'agent-obs-export', method: request.method, status: 'error', error_code: 'invalid_since', user_agent: ua.slice(0, 500) }));
+				else ctx.waitUntil(post(stub, '/count-unauthorized', {}));
 				return json({ error: ok ? "Query param 'since' (ISO 8601) is required" : 'Unauthorized' }, ok ? 400 : 401);
 			}
 			let cursors: unknown = undefined;
