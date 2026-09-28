@@ -120,15 +120,17 @@ const worker = {
 		// ── observabilidade por etapa, depois entrega o asset ─────────────────
 		const bot = classify(ua, request.headers);
 		const ref = isAiReferral(request.headers.get('referer'), url);
+		const res = await env.ASSETS.fetch(request);
 		if (bot || ref) {
+			// Estado e bytes da resposta: sem isto não se distinguia um 404 servido a um bot de uma página lida.
+			const len = Number(res.headers.get('content-length') || 0) || null;
 			ctx.waitUntil(post(stub, '/log-hit', {
 				ip, path: path.slice(0, 300), ua: ua.slice(0, 300),
 				etapa: bot ? bot.etapa : '4', operador: bot ? bot.operador : ref!.operador, bot: bot?.bot ?? null,
 				referer_src: ref?.fonte ?? null, country: (cf.country as string) ?? null, asn: (cf.asn as number) ?? null,
-				signed_agent: request.headers.has('signature-agent'),
+				signed_agent: request.headers.has('signature-agent'), status: res.status, bytes: len,
 			}));
 		}
-		const res = await env.ASSETS.fetch(request);
 		if (path === '/agents.md') {
 			const h = new Headers(res.headers); h.set('content-type', 'text/markdown; charset=utf-8');
 			return new Response(res.body, { status: res.status, headers: h });

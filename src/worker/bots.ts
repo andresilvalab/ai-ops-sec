@@ -4,7 +4,7 @@
    Fontes: docs oficiais de cada fornecedor (OpenAI bots, Anthropic crawlers, Perplexity bots, Google
    common crawlers e user-triggered fetchers, Bing, Meta web crawlers, Apple). */
 
-export type Etapa = '1' | '2' | '3';
+export type Etapa = '1' | '2' | '3' | 's';
 export interface BotMatch { bot: string; operador: string; etapa: Etapa; }
 
 const BOTS: [RegExp, string, string, Etapa][] = [
@@ -40,6 +40,19 @@ const BOTS: [RegExp, string, string, Etapa][] = [
 	[/DeepSeekBot/i, 'DeepSeekBot', 'deepseek', '2'],
 	[/YouBot/i, 'YouBot', 'you', '1'],
 	[/omgili|omgilibot/i, 'omgili', 'webz', '2'],
+	// SEO e ferramentas de visibilidade: não são motores de resposta nem agentes de utilizador (etapa 's')
+	[/AhrefsBot|AhrefsSiteAudit/i, 'AhrefsBot', 'ahrefs', 's'],
+	[/SemrushBot|SiteAuditBot/i, 'SemrushBot', 'semrush', 's'],
+	[/DotBot|MJ12bot|DataForSeoBot|Barkrowler|serpstatbot|BLEXBot/i, 'SEO bot', 'seo', 's'],
+];
+
+/* Agentes assinados (Web Bot Auth): o Signature-Agent diz o operador. Só os produtos que agem em nome de uma
+   pessoa contam como etapa 3; o resto (Ahrefs, rootcrawl...) são crawlers de terceiros, etapa 's'.
+   Até 28-Set todos contavam como etapa 3: os 13 "fetches por pergunta" da primeira semana eram Ahrefs. */
+const SIGNED_USER_AGENTS: [RegExp, string, string][] = [
+	[/chatgpt\.com|openai\.com/i, 'ChatGPT agent (signed)', 'openai'],
+	[/perplexity\.ai/i, 'Perplexity agent (signed)', 'perplexity'],
+	[/anthropic\.com|claude\.ai/i, 'Claude agent (signed)', 'anthropic'],
 ];
 
 /** Devolve o bot de IA, ou null para humanos e bots que não interessam (monitorização, uptime...). */
@@ -48,8 +61,10 @@ export function classify(ua: string, headers: Headers): BotMatch | null {
 	// Agente do ChatGPT em browser: UA de Chrome normal, identidade só na assinatura (Web Bot Auth).
 	const sig = headers.get('signature-agent');
 	if (sig) {
-		if (/chatgpt\.com|openai\.com/i.test(sig)) return { bot: 'ChatGPT agent (signed)', operador: 'openai', etapa: '3' };
-		return { bot: `signed agent ${sig.replace(/"/g, '').slice(0, 60)}`, operador: 'signed', etapa: '3' };
+		for (const [rx, bot, operador] of SIGNED_USER_AGENTS) if (rx.test(sig)) return { bot, operador, etapa: '3' };
+		let host = 'desconhecido';
+		try { host = new URL(sig.replace(/"/g, '')).hostname.replace(/^www\./, ''); } catch { /* valor não é URL */ }
+		return { bot: `signed ${host}`, operador: /ahrefs/.test(host) ? 'ahrefs' : host.split('.').slice(-2).join('.'), etapa: 's' };
 	}
 	return null;
 }

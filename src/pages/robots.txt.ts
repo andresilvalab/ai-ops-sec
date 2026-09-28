@@ -7,8 +7,10 @@ export function GET({ site }: APIContext) {
 	const search = ['Googlebot', 'Bingbot', 'OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot', 'Applebot'];
 	// Fetchers accionados por uma pergunta de um utilizador (etapa 3): também permitidos.
 	const userFetch = ['ChatGPT-User', 'Claude-User', 'Perplexity-User', 'Google-Agent', 'meta-externalfetcher'];
-	// Treino: permitido por decisão explícita (25-Set-2026); reversível aqui, uma linha por bot.
-	const training = ['GPTBot', 'ClaudeBot', 'CCBot', 'Google-Extended'];
+	// Treino: permitido por decisão explícita (25-Set-2026, alargado a 28-Set); reversível aqui, uma linha por bot.
+	// meta-externalagent cobre treino E indexação para o Meta AI (a Meta não os separa); Amazonbot alimenta o
+	// Alexa e o treino da Amazon. O texto é CC BY: o objectivo é alcance.
+	const training = ['GPTBot', 'ClaudeBot', 'CCBot', 'Google-Extended', 'Applebot-Extended', 'meta-externalagent', 'Amazonbot'];
 	const body = [
 		'# André Silva Lab. Agentes: /agents.md · manifesto MCP: /.well-known/mcp.json · contexto: /llms.txt',
 		...search.flatMap((ua) => [`User-agent: ${ua}`, 'Allow: /', '']),
