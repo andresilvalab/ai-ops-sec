@@ -1,7 +1,10 @@
 # Política de segurança
 
-Este é um site estático sem backend, sem autenticação e sem dados de utilizadores. Mesmo assim,
-uma falha aqui (um script injectado, um cabeçalho em falta, uma dependência comprometida) conta.
+Site estático com um Worker na frente. O Worker regista pedidos de agentes de IA (IP só em hash com sal), serve
+um servidor MCP só de leitura em `/mcp`, um scanner público em `/api/scan` e guarda pedidos de contacto que a
+pessoa confirmou. O export destes dados para o autor é autenticado. Tudo isto está no âmbito: uma falha no
+Worker, no MCP, no scanner (por exemplo um pedido a rede interna), um script injectado, um cabeçalho em falta
+ou uma dependência comprometida conta.
 
 **Reportar:** abre um aviso privado em
 https://github.com/andresilvalab/ai-ops-sec/security/advisories/new. Não uses issues

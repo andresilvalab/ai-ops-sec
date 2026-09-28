@@ -12,3 +12,8 @@ node_modules/
 npm-debug.log*
 # conteúdo em rascunho local que não deve sair (o espelho só traz `published`)
 src/content/posts/**/*.local.*
+
+# estado local do wrangler e segredos locais (auditoria de 28-Set-2026: .wrangler/state entrou no main no PR #37)
+.wrangler/
+.dev.vars
+.dev.vars.*

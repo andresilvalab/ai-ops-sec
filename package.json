@@ -38,5 +38,8 @@
   },
   "devDependencies": {
     "wrangler": "4.132.0"
+  },
+  "overrides": {
+    "fflate": "^0.7.5"
   }
 }

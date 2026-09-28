@@ -3,6 +3,7 @@
    (caminhos absolutos de máquina, referências a bases privadas, tokens óbvios).
    A lista de termos sensíveis vive fora deste repositório, de propósito. */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { join, extname } from 'node:path';
 
 const ROOT = process.cwd();
@@ -44,6 +45,16 @@ function walk(dir) {
 	}
 }
 walk(ROOT);
+// Ficheiros que nunca podem estar no repo, mesmo que o texto pareca limpo: o estado local do wrangler (SQLite com
+// o que o `wrangler dev` registou) e os segredos locais. Auditoria de 28-Set-2026: .wrangler/state entrou no PR #37.
+try {
+	for (const f of execSync('git ls-files', { encoding: 'utf8' }).split('\n')) {
+		if (/^\.wrangler\/|(^|\/)\.dev\.vars|\.sqlite(-wal|-shm)?$|(^|\/)\.env(\.|$)/.test(f)) {
+			problems++;
+			console.log(`${f}: estado local ou segredo local no repositório`);
+		}
+	}
+} catch { /* fora de um repo git: so o varrimento de texto */ }
 if (problems) {
 	console.error(`\n${problems} marcador(es) privado(s). Nada disto pode ser publicado.`);
 	process.exit(1);

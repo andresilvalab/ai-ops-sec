@@ -45,4 +45,6 @@ jobs:
           curl -s -o /dev/null -w 'security.txt %{http_code}\n' https://andresilvalab.com/.well-known/security.txt | grep -q 200
           echo "cabeçalhos e security.txt OK"
       - name: IndexNow (avisar os índices dos URLs que mudaram)
-        run: node scripts/indexnow.mjs "${{ github.event.before }}"
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: node scripts/indexnow.mjs "$BEFORE"
