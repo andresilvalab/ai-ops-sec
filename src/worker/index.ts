@@ -139,6 +139,12 @@ const worker = {
 				signed_agent: request.headers.has('signature-agent'), status: res.status, bytes: len,
 			}));
 		}
+		// Verificacao do handle @andresilvalab.com no Bluesky: o ficheiro nao tem extensao e os assets serviam-no
+		// como octet-stream; o protocolo pede texto simples com o DID.
+		if (path === '/.well-known/atproto-did') {
+			const h = new Headers(res.headers); h.set('content-type', 'text/plain; charset=utf-8');
+			return new Response(res.body, { status: res.status, headers: h });
+		}
 		if (path === '/agents.md') {
 			const h = new Headers(res.headers); h.set('content-type', 'text/markdown; charset=utf-8');
 			return new Response(res.body, { status: res.status, headers: h });
