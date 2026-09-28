@@ -40,6 +40,8 @@ const MIGRATIONS = [
 ];
 const GENESIS = '0'.repeat(64);
 const RANGES_TTL_MS = 24 * 3600_000;
+const HIT_MAX_PER_H = 300;     // linhas de hits por origem e hora; acima disto conta-se, não se guarda
+const CANARY_MAX_PER_H = 10;   // um canário lido 10 vezes na mesma hora pela mesma origem já provou o que tinha a provar
 
 export class AgentObs extends DurableObject {
 	private ready = false;
@@ -109,6 +111,21 @@ export class AgentObs extends DurableObject {
 		return inNets(parsed, nets) ? 1 : 0;
 	}
 
+	/* Orçamento de escrita por origem e hora, em memória (não custa linhas). Um bot real que leia o site
+	   inteiro fica muito abaixo do tecto; quem o ultrapassa é um loop, um scanner ou alguém a martelar os
+	   canários com um UA falso, e isso conta-se em vez de se guardar linha a linha. O que foi descartado
+	   sai no export (`dropped_hits`), para a Torre saber que a contagem daquela hora é um piso. */
+	private budget = new Map<string, { n: number; until: number }>();
+	private dropped = 0;
+	private within(key: string, max: number): boolean {
+		const now = Date.now();
+		let b = this.budget.get(key);
+		if (!b || b.until < now) { b = { n: 0, until: now + 3600_000 }; this.budget.set(key, b); }
+		if (this.budget.size > 5000) for (const [k, v] of this.budget) if (v.until < now) this.budget.delete(k);
+		b.n += 1;
+		return b.n <= max;
+	}
+
 	async fetch(req: Request): Promise<Response> {
 		await this.init();
 		const url = new URL(req.url);
@@ -118,6 +135,12 @@ export class AgentObs extends DurableObject {
 		switch (url.pathname) {
 			case '/log-hit': {
 				const operador = (body.operador as string) ?? null;
+				const key = `${body.canario ? 'c' : 'h'}:${ip}`;
+				if (!this.within(key, body.canario ? CANARY_MAX_PER_H : HIT_MAX_PER_H)) {
+					this.dropped += 1;
+					if (this.dropped % 50 === 0) await this.ctx.storage.put('dropped_hits', ((await this.ctx.storage.get<number>('dropped_hits')) ?? 0) + 50);
+					return ok();
+				}
 				const verificado = body.bot || body.canario ? await this.verify(ip, operador) : null;
 				sql.exec(
 					`INSERT OR IGNORE INTO hits (id, ts, etapa, operador, bot, path, ua, referer_src, country, asn, ip_hash, signed_agent, canario, verificado, status, bytes)
@@ -183,17 +206,34 @@ export class AgentObs extends DurableObject {
 				return ok();
 			}
 			case '/export': {
+				/* Um cursor por tabela, (ts, id). O cursor único de antes avançava pelo máximo de todas as tabelas:
+				   se `requests` enchia a página antes de `hits`, os hits entre os dois cursores nunca saíam. Cada
+				   tabela devolve o seu próprio cursor e `more` diz se alguma ficou por esgotar. `since` continua
+				   a servir de ponto de partida quando a Torre ainda não tem cursores. */
 				const since = String(body.since);
 				const limit = Number(body.limit ?? 5000);
-				const rows = sql.exec('SELECT * FROM requests WHERE created_at > ? ORDER BY created_at, id LIMIT ?', since, limit).toArray();
-				const hits = sql.exec('SELECT * FROM hits WHERE ts > ? ORDER BY ts, id LIMIT ?', since, limit).toArray();
-				const contacts = sql.exec('SELECT * FROM contacts WHERE created_at > ? ORDER BY created_at, id LIMIT ?', since, limit).toArray();
-				const scans = sql.exec('SELECT id, ts, host, score, cached, ip_hash FROM scans WHERE ts > ? ORDER BY ts LIMIT ?', since, limit).toArray();
+				const cur = (body.cursors && typeof body.cursors === 'object' ? body.cursors : {}) as Record<string, { ts?: string; id?: string } | undefined>;
+				const page = (table: string, tsCol: string, cols = '*') => {
+					const c = cur[table];
+					const ts = c?.ts || since; const id = c?.id || '';
+					return sql.exec(`SELECT ${cols} FROM ${table} WHERE ${tsCol} > ? OR (${tsCol} = ? AND id > ?) ORDER BY ${tsCol}, id LIMIT ?`, ts, ts, id, limit).toArray();
+				};
+				const rows = page('requests', 'created_at');
+				const hits = page('hits', 'ts');
+				const contacts = page('contacts', 'created_at');
+				const scans = page('scans', 'ts', 'id, ts, host, score, cached, ip_hash');
 				const rangesAt = (await this.ctx.storage.get<number>('ranges_at')) ?? 0;
 				const rangesN = sql.exec('SELECT operador, COUNT(*) AS n FROM ranges GROUP BY operador').toArray();
+				const next = (table: string, xs: Record<string, unknown>[], k: string) => {
+					const l = xs[xs.length - 1];
+					return l ? { ts: String(l[k]), id: String(l.id) } : cur[table] ?? { ts: since, id: '' };
+				};
+				const cursors = { requests: next('requests', rows, 'created_at'), hits: next('hits', hits, 'ts'), contacts: next('contacts', contacts, 'created_at'), scans: next('scans', scans, 'ts') };
+				const more = [rows, hits, contacts, scans].some((xs) => xs.length === limit);
 				const last = (xs: Record<string, unknown>[], k: string) => (xs.length === limit ? (xs[xs.length - 1][k] as string) : null);
 				return json({
-					generated_at: nowIso(), since, rows, hits, contacts, scans,
+					generated_at: nowIso(), since, rows, hits, contacts, scans, cursors, more,
+					dropped_hits: ((await this.ctx.storage.get<number>('dropped_hits')) ?? 0) + (this.dropped % 50),
 					ranges: { refreshed_at: rangesAt ? new Date(rangesAt).toISOString() : null, operators: rangesN },
 					next_since: last(rows, 'created_at') ?? last(hits, 'ts'),
 				});

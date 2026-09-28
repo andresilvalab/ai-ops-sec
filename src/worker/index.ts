@@ -31,6 +31,9 @@ const SCAN_CACHE_S = 1800;     // o mesmo domínio devolve o resultado guardado 
 /* Canários: um link que só existe num ficheiro para máquinas. Um pedido a este caminho prova que
    quem o fez leu aquele ficheiro. Anunciados como tal no agents.md (transparência, não armadilha). */
 const CANARIES = new Set(['llms-txt', 'llms-full', 'agents-md', 'mcp-json', 'agent-index']);
+/* Assets que não dizem nada sobre leitura (CSS, fontes, imagens, scripts): não gastam linhas no DO.
+   Os ficheiros para máquinas (.txt, .xml, .json, .md) ficam de fora desta lista de propósito. */
+const STATIC_ASSET = /\.(css|js|mjs|map|png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|otf|mp4|webm)$/i;
 
 function obs(env: Env): DurableObjectStub {
 	return env.AGENT_OBS.get(env.AGENT_OBS.idFromName('main'));
@@ -63,7 +66,9 @@ const worker = {
 				ctx.waitUntil(post(stub, '/log-request', { ip, tool: 'agent-obs-export', method: request.method, status: 'error', error_code: ok ? 'invalid_since' : 'unauthorized', user_agent: ua.slice(0, 500) }));
 				return json({ error: ok ? "Query param 'since' (ISO 8601) is required" : 'Unauthorized' }, ok ? 400 : 401);
 			}
-			const r = await post(stub, '/export', { since, limit });
+			let cursors: unknown = undefined;
+			try { cursors = JSON.parse(url.searchParams.get('cursors') || 'null') ?? undefined; } catch { cursors = undefined; }
+			const r = await post(stub, '/export', { since, limit, cursors });
 			ctx.waitUntil(post(stub, '/log-request', { ip, tool: 'agent-obs-export', method: 'GET', status: 'ok', user_agent: ua.slice(0, 500) }));
 			return new Response(await r.text(), { status: 200, headers: { 'content-type': 'application/json' } });
 		}
@@ -112,7 +117,7 @@ const worker = {
 			const via = target.hostname === own
 				? (u: string, init?: RequestInit) => new URL(u).hostname === own ? worker.fetch(new Request(u, init), env, ctx) : fetch(u, init)
 				: undefined;
-			const result = await scan(target, via);
+			const result = await scan(target, via, target.hostname === own ? own : null);
 			ctx.waitUntil(post(stub, '/scan-log', { ip, host: target.hostname, score: result.score, result, cached: false }));
 			return json({ cached: false, ...result }, 200, { 'cache-control': 'no-store' });
 		}
@@ -121,7 +126,7 @@ const worker = {
 		const bot = classify(ua, request.headers);
 		const ref = isAiReferral(request.headers.get('referer'), url);
 		const res = await env.ASSETS.fetch(request);
-		if (bot || ref) {
+		if ((bot || ref) && !STATIC_ASSET.test(path)) {
 			// Estado e bytes da resposta: sem isto não se distinguia um 404 servido a um bot de uma página lida.
 			const len = Number(res.headers.get('content-length') || 0) || null;
 			ctx.waitUntil(post(stub, '/log-hit', {
