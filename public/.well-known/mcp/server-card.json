@@ -1,0 +1,71 @@
+{
+  "version": "1.0",
+  "protocolVersion": "2026-07-28",
+  "serverInfo": {
+    "name": "com.andresilvalab/lab",
+    "title": "André Silva Lab",
+    "version": "0.1.0"
+  },
+  "description": "Read-only MCP server for André Silva Lab, an agentic AI lab with proof: articles on agents in production, AI Ops Sec, evaluation and tokenization, in Portuguese and English.",
+  "websiteUrl": "https://andresilvalab.com",
+  "documentationUrl": "https://andresilvalab.com/agents.md",
+  "transport": {
+    "type": "streamable-http",
+    "endpoint": "https://andresilvalab.com/mcp"
+  },
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    }
+  },
+  "authentication": {
+    "required": false,
+    "note": "read-only tools without auth; request_contact requires explicit human consent and defaults to dry_run"
+  },
+  "tools": [
+    {
+      "name": "get_entity",
+      "description": "Quem é o André Silva Lab: autor, posicionamento, licenças, feeds e políticas.",
+      "requiresHumanApproval": false
+    },
+    {
+      "name": "list_areas",
+      "description": "As áreas do laboratório com descrição e temas.",
+      "requiresHumanApproval": false
+    },
+    {
+      "name": "list_articles",
+      "description": "Artigos publicados por língua e área, mais recentes primeiro.",
+      "requiresHumanApproval": false
+    },
+    {
+      "name": "search",
+      "description": "Pesquisa determinística (sem LLM) nos artigos; devolve excertos e URL para citar.",
+      "requiresHumanApproval": false
+    },
+    {
+      "name": "get_article",
+      "description": "Texto completo de um artigo pelo slug, com fontes e histórico.",
+      "requiresHumanApproval": false
+    },
+    {
+      "name": "get_policies",
+      "description": "Licenças, regra de citação, o que fica registado e as regras para agentes.",
+      "requiresHumanApproval": false
+    },
+    {
+      "name": "request_contact",
+      "description": "Pedido de contacto com o autor em nome de uma pessoa que confirmou os dados. dry_run é true por defeito.",
+      "requiresHumanApproval": true
+    }
+  ],
+  "rateLimits": {
+    "calls": {
+      "limit": 60,
+      "window_seconds": 600,
+      "scope": "per client"
+    },
+    "on_exceed": "HTTP 429 with Retry-After and JSON-RPC error -32000 (data.code rate_limited)"
+  },
+  "manifest": "https://andresilvalab.com/.well-known/mcp.json"
+}

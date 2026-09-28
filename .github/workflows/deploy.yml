@@ -16,6 +16,8 @@ jobs:
       url: https://andresilvalab.com/
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # o IndexNow compara com o commit anterior para saber que artigos mudaram
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
@@ -42,3 +44,5 @@ jobs:
           done
           curl -s -o /dev/null -w 'security.txt %{http_code}\n' https://andresilvalab.com/.well-known/security.txt | grep -q 200
           echo "cabeçalhos e security.txt OK"
+      - name: IndexNow (avisar os índices dos URLs que mudaram)
+        run: node scripts/indexnow.mjs "${{ github.event.before }}"
