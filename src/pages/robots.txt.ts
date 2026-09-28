@@ -23,6 +23,8 @@ export function GET({ site }: APIContext) {
 		'',
 		'Content-Signal: search=yes, ai-input=yes, ai-train=yes',
 		`Sitemap: ${new URL(`${base}/sitemap-index.xml`, site)}`,
+		// Também o ficheiro final: o ClaudeBot pediu o índice 19 vezes em 3 dias e nunca desceu ao sitemap-0 (28-Set-2026).
+		`Sitemap: ${new URL(`${base}/sitemap-0.xml`, site)}`,
 		'',
 	].join('\n');
 	return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });

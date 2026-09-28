@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import PostRow from '../PostRow.astro';
 import type { Locale } from '../../consts';
-import { href, site, t } from '../../lib/i18n';
+import { href, otherLocale, site, t } from '../../lib/i18n';
 import { getPosts, getTags } from '../../lib/posts';
 
 interface Props {
@@ -13,14 +13,18 @@ const { locale, tag } = Astro.props;
 const ui = t(locale);
 const tags = await getTags(locale);
 const posts = tag ? (await getPosts(locale)).filter((p) => p.data.tags.includes(tag)) : [];
+/* hreflang só quando a tag existe na outra língua: até 28-Set-2026 apontava sempre, e os bots seguiam para
+   404 (/tags/agents/, /en/tags/interpretabilidade/). As páginas de tag ficam noindex,follow: são navegação
+   interna, não conteúdo, e levavam um terço do crawl dos bots de resposta. */
+const tagInOther = tag ? (await getTags(otherLocale(locale))).has(tag) : true;
 ---
 
 <Base
 	locale={locale}
 	title={tag ? `${ui.tagged} ${tag}` : ui.tags_title}
 	description={site(locale).description}
-	alternatePath={tag ? `tags/${tag}` : 'tags'}
-	noindex={!!tag && posts.length === 0}
+	alternatePath={tagInOther ? (tag ? `tags/${tag}` : 'tags') : undefined}
+	noindex={!!tag}
 >
 	<header class="head">
 		<p class="seq-label">//{ui.nav_tags}</p>
