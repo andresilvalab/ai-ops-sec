@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS ranges (operador TEXT NOT NULL, cidr TEXT NOT NULL);
 const MIGRATIONS = [
 	'ALTER TABLE hits ADD COLUMN canario TEXT',
 	'ALTER TABLE hits ADD COLUMN verificado INTEGER',
+	'ALTER TABLE hits ADD COLUMN status INTEGER',
+	'ALTER TABLE hits ADD COLUMN bytes INTEGER',
 	'ALTER TABLE requests ADD COLUMN results_n INTEGER',
 	'ALTER TABLE requests ADD COLUMN top_score INTEGER',
 	'ALTER TABLE contacts ADD COLUMN consent_hash TEXT',
@@ -118,11 +120,11 @@ export class AgentObs extends DurableObject {
 				const operador = (body.operador as string) ?? null;
 				const verificado = body.bot || body.canario ? await this.verify(ip, operador) : null;
 				sql.exec(
-					`INSERT OR IGNORE INTO hits (id, ts, etapa, operador, bot, path, ua, referer_src, country, asn, ip_hash, signed_agent, canario, verificado)
-					 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+					`INSERT OR IGNORE INTO hits (id, ts, etapa, operador, bot, path, ua, referer_src, country, asn, ip_hash, signed_agent, canario, verificado, status, bytes)
+					 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 					crypto.randomUUID(), nowIso(), String(body.etapa), operador, body.bot ?? null, body.path ?? null,
 					body.ua ?? null, body.referer_src ?? null, body.country ?? null, body.asn ?? null, await this.ipHash(ip),
-					body.signed_agent ? 1 : 0, body.canario ?? null, verificado,
+					body.signed_agent ? 1 : 0, body.canario ?? null, verificado, body.status ?? null, body.bytes ?? null,
 				);
 				return ok();
 			}
