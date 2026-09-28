@@ -1,0 +1,26 @@
+---
+/* Perguntas que o artigo responde (frontmatter `faq`). Texto visível igual ao do JSON-LD: o que se declara
+   em dados estruturados tem de estar na página. */
+import type { Locale } from '../consts';
+import { t } from '../lib/i18n';
+import type { Post } from '../lib/posts';
+interface Props { post: Post }
+const { post } = Astro.props;
+const locale: Locale = post.data.lang;
+const ui = t(locale);
+const faq = post.data.faq ?? [];
+---
+{faq.length > 0 && (
+	<section class="card faq" aria-labelledby="faq" style="--i:2">
+		<div class="stitle"><span class="idx">//</span><h2 id="faq">{ui.faq_title}</h2><span class="rule"></span><span class="hint">{faq.length}</span></div>
+		<dl>
+			{faq.map((x) => (<><dt>{x.q}</dt><dd>{x.a}</dd></>))}
+		</dl>
+	</section>
+)}
+<style>
+	.faq { margin-top: 3rem; max-width: var(--measure); }
+	dl { margin: 0; display: grid; gap: 14px; }
+	dt { font-weight: 600; color: var(--fg); }
+	dd { margin: 4px 0 0; color: var(--muted); line-height: 1.6; }
+</style>

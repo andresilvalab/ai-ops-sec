@@ -26,7 +26,7 @@ ${url} é o laboratório de IA agêntica de ${AUTHOR.name}: artigos sobre como a
 
 ### Descoberta para agentes
 
-- Manifesto: ${url}/.well-known/mcp.json
+- Manifesto: ${url}/.well-known/mcp.json (server card: ${url}/.well-known/mcp/server-card.json)
 - Endpoint MCP (Streamable HTTP, JSON-RPC 2.0, sem estado, sem autenticação): ${url}/mcp
 
 Tools:
@@ -72,7 +72,7 @@ ${url} is ${AUTHOR.name}'s agentic AI lab: articles on how AI agents are built, 
 
 ### Agent discovery
 
-- Manifest: ${url}/.well-known/mcp.json
+- Manifest: ${url}/.well-known/mcp.json (server card: ${url}/.well-known/mcp/server-card.json)
 - MCP endpoint (Streamable HTTP, JSON-RPC 2.0, stateless, no authentication): ${url}/mcp
 
 Tools:

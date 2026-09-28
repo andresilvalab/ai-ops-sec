@@ -67,3 +67,14 @@ export function profilePageLd(locale: Locale, url: string) {
 		},
 	};
 }
+
+/** FAQPage a partir do frontmatter `faq`. A Google limitou os rich results de FAQ em 2023; o JSON-LD fica
+    porque outros motores e agentes o lêem como pares pergunta-resposta citáveis. */
+export function faqLd(post: Post, url: string) {
+	const f = post.data.faq ?? [];
+	if (!f.length) return null;
+	return {
+		'@context': 'https://schema.org', '@type': 'FAQPage', url, inLanguage: SITE[post.data.lang].locale,
+		mainEntity: f.map((x) => ({ '@type': 'Question', name: x.q, acceptedAnswer: { '@type': 'Answer', text: x.a } })),
+	};
+}

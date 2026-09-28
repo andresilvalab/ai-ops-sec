@@ -2,6 +2,8 @@
 import { render } from 'astro:content';
 import Base from './Base.astro';
 import PostFooter from '../components/PostFooter.astro';
+import Related from '../components/Related.astro';
+import Faq from '../components/Faq.astro';
 import TraceRail from '../components/TraceRail.astro';
 import Callout from '../components/mdx/Callout.astro';
 import Redacted from '../components/mdx/Redacted.astro';
@@ -14,7 +16,7 @@ import type { Locale } from '../consts';
 import { href, t } from '../lib/i18n';
 import { areaOf } from '../lib/areas';
 import { getTranslation, slugOf, type Post } from '../lib/posts';
-import { articleLd, breadcrumbLd } from '../lib/seo';
+import { articleLd, breadcrumbLd, faqLd } from '../lib/seo';
 
 interface Props {
 	post: Post;
@@ -36,6 +38,7 @@ const jsonLd = [
 		{ name: ui.nav_blog, url: new URL(href(locale, 'blog'), Astro.site).toString() },
 		{ name: d.title, url },
 	]),
+	...[faqLd(post, url)].filter(Boolean),
 ];
 const alternatePath = translation ? `blog/${slugOf(translation)}` : undefined;
 const area = areaOf(d.area);
@@ -73,6 +76,8 @@ const area = areaOf(d.area);
 				<div class="prose">
 					<Content components={{ Callout, Redacted, InlineAnimation, Chain, Cards }} />
 				</div>
+				<Faq post={post} />
+				<Related post={post} />
 				<PostFooter post={post} url={url} />
 			</div>
 		</div>

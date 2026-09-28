@@ -32,6 +32,9 @@ const posts = defineCollection({
 			verifiedOn: z.coerce.date().optional(),
 			changelog: z.array(z.object({ date: z.coerce.date(), note: z.string() })).default([]),
 			canonical: z.string().url().optional(),
+			// Perguntas que o artigo responde, em 1 a 3 frases cada. Saem no fim do artigo e em JSON-LD FAQPage:
+			// são as passagens que um motor de resposta extrai. Só perguntas que o texto responde de facto.
+			faq: z.array(z.object({ q: z.string().min(8).max(160), a: z.string().min(20).max(600) })).max(8).default([]),
 		}),
 });
 
