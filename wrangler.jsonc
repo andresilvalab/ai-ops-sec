@@ -11,7 +11,11 @@
 	"assets": {
 		"directory": "./dist",
 		"binding": "ASSETS",
-		"run_worker_first": true,
+		// O Worker corre primeiro nas páginas e nos ficheiros para máquinas (é aí que se mede quem lê o quê);
+		// os assets estáticos vão directos do cache. Cada pedido que passa pelo Worker e vem de um bot é uma
+		// linha escrita no Durable Object, e no plano Free são 100 mil linhas por dia: com `true` um crawler
+		// a puxar CSS, fontes e imagens gastava esse orçamento e os contactos reais perdiam-se em silêncio.
+		"run_worker_first": ["/*", "!/_astro/*", "!/pagefind/*", "!/js/*", "!/og/*", "!/favicon.svg"],
 		"not_found_handling": "404-page",
 		"html_handling": "auto-trailing-slash"
 	},

@@ -4,7 +4,11 @@
      lê-se do robots.txt, não se testa com o nome dele;
    - bloqueios de firewall (WAF) não são testados, porque isso exigiria fingir outro bot;
    - nunca se chamam tools de acção em sites de terceiros: só tools/list;
-   - cada pedido tem timeout e tecto de bytes. */
+   - cada pedido tem timeout e tecto de bytes;
+   - só hosts públicos com nome, em cada salto de redirect e no endpoint MCP que o alvo declara: o nome
+     resolve-se por DoH e recusa-se se cair numa gama privada (o scanner corre dentro da Cloudflare). */
+
+import { inNets, parseCidr, parseIp, type Net } from './ranges';
 
 const UA = 'AndreSilvaLab-AgentReadyScanner/1.0 (+https://andresilvalab.com/scanner/)';
 const MAX_BYTES = 512 * 1024;
@@ -21,46 +25,106 @@ export interface ScanResult {
 	facts: Record<string, unknown>; method: T;
 }
 
-export function normaliseTarget(input: string): URL | null {
-	let s = (input || '').trim();
-	if (!s || s.length > 300) return null;
-	if (!/^https?:\/\//i.test(s)) s = `https://${s}`;
+/* Só hosts públicos, com nome: nunca IPs literais, nunca sufixos internos. `publicUrl` mantém o caminho
+   (serve para redirects e para o endpoint MCP declarado pelo alvo); `normaliseTarget` reduz à raiz. */
+export function publicUrl(input: string): URL | null {
+	const s = (input || '').trim();
+	if (!s || s.length > 2000) return null;
 	let u: URL;
 	try { u = new URL(s); } catch { return null; }
 	const h = u.hostname.toLowerCase();
 	if (!['http:', 'https:'].includes(u.protocol)) return null;
 	if (u.port && !['80', '443'].includes(u.port)) return null;
 	if (u.username || u.password) return null;
-	if (!h.includes('.') || h.includes(':') || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return null;
-	if (/(^|\.)(localhost|local|internal|intranet|lan|home|corp|arpa)$/.test(h)) return null;
-	return new URL(`https://${h}/`);
+	if (!h.includes('.') || h.includes(':') || h.startsWith('[') || /^\d+\.\d+\.\d+\.\d+$/.test(h) || /^0x|^\d+$/.test(h)) return null;
+	if (/(^|\.)(localhost|local|internal|intranet|lan|home|corp|arpa|test|invalid|example)$/.test(h)) return null;
+	if (/(^|\.)(nip\.io|sslip\.io|xip\.io|localtest\.me|lvh\.me)$/.test(h)) return null;
+	return u;
+}
+
+export function normaliseTarget(input: string): URL | null {
+	let s = (input || '').trim();
+	if (!s || s.length > 300) return null;
+	if (!/^https?:\/\//i.test(s)) s = `https://${s}`;
+	const u = publicUrl(s);
+	return u ? new URL(`https://${u.hostname.toLowerCase()}/`) : null;
+}
+
+/* Gamas que um scanner público nunca deve alcançar, mesmo que o nome resolva para lá. */
+const PRIVATE_NETS: Net[] = ['0.0.0.0/8', '10.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8', '169.254.0.0/16', '172.16.0.0/12', '192.0.0.0/24',
+	'192.0.2.0/24', '192.168.0.0/16', '198.18.0.0/15', '198.51.100.0/24', '203.0.113.0/24', '224.0.0.0/3',
+	'::/128', '::1/128', '::ffff:0:0/96', '64:ff9b::/96', '100::/64', '2001:db8::/32', 'fc00::/7', 'fe80::/10', 'ff00::/8']
+	.map(parseCidr).filter((n): n is Net => !!n);
+
+/* Resolve o nome por DoH e recusa se QUALQUER resposta cair numa gama privada. Sem resposta = recusa:
+   um nome que não resolve não é um site público. Cache por análise, nunca entre análises. */
+async function resolvesPublic(host: string, cache: Map<string, boolean>, doh: Fetcher): Promise<boolean> {
+	const hit = cache.get(host);
+	if (hit !== undefined) return hit;
+	let okAny = false;
+	try {
+		for (const type of ['A', 'AAAA']) {
+			const r = await doh(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=${type}`, { headers: { accept: 'application/dns-json' }, signal: AbortSignal.timeout(4000) });
+			if (!r.ok) continue;
+			const j = (await r.json()) as { Answer?: { type: number; data: string }[] };
+			for (const a of j.Answer ?? []) {
+				if (a.type !== 1 && a.type !== 28) continue;
+				const ip = parseIp(a.data);
+				if (!ip || inNets(ip, PRIVATE_NETS)) { cache.set(host, false); return false; }
+				okAny = true;
+			}
+		}
+	} catch { /* DoH em baixo: recusa, não adivinha */ }
+	cache.set(host, okAny);
+	return okAny;
 }
 
 interface Got { status: number; ct: string; text: string; ms: number; err?: string; }
 export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
-let fetcher: Fetcher = (u, i) => fetch(u, i);
-async function get(url: string, init: RequestInit = {}): Promise<Got> {
-	const t0 = Date.now();
-	try {
-		const r = await fetcher(url, { ...init, redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': UA, accept: '*/*', ...(init.headers || {}) } });
-		const reader = r.body?.getReader();
-		const chunks: Uint8Array[] = [];
-		let n = 0;
-		if (reader) {
-			while (n < MAX_BYTES) {
-				const { done, value } = await reader.read();
-				if (done || !value) break;
-				chunks.push(value); n += value.length;
+type Get = (url: string, init?: RequestInit) => Promise<Got>;
+const REDIRECT_MAX = 3;
+
+/* Um `get` por análise (o antigo `fetcher` global partilhava-se entre análises concorrentes). Segue
+   redirects à mão: cada salto passa pelo mesmo portão de host público e de resolução DNS. */
+function mkGet(via: Fetcher, own: string | null): Get {
+	const dns = new Map<string, boolean>();
+	return async function get(url: string, init: RequestInit = {}): Promise<Got> {
+		const t0 = Date.now();
+		try {
+			let cur = url; let method = init.method || 'GET'; let body = init.body;
+			let r: Response | null = null;
+			for (let hop = 0; hop <= REDIRECT_MAX; hop++) {
+				const u = publicUrl(cur);
+				if (!u) return { status: 0, ct: '', text: '', ms: Date.now() - t0, err: 'host_recusado' };
+				if (u.hostname !== own && !(await resolvesPublic(u.hostname, dns, via))) return { status: 0, ct: '', text: '', ms: Date.now() - t0, err: 'dns_privado' };
+				r = await via(u.toString(), { ...init, method, body, redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': UA, accept: '*/*', ...(init.headers || {}) } });
+				const loc = r.headers.get('location');
+				if (![301, 302, 303, 307, 308].includes(r.status) || !loc) break;
+				try { await r.body?.cancel(); } catch { /* já fechado */ }
+				if (hop === REDIRECT_MAX) return { status: r.status, ct: '', text: '', ms: Date.now() - t0, err: 'redirects_a_mais' };
+				cur = new URL(loc, u).toString();
+				if (r.status === 303 || ((r.status === 301 || r.status === 302) && method === 'POST')) { method = 'GET'; body = undefined; }
 			}
-			try { await reader.cancel(); } catch { /* já fechado */ }
+			if (!r) return { status: 0, ct: '', text: '', ms: Date.now() - t0, err: 'sem_resposta' };
+			const reader = r.body?.getReader();
+			const chunks: Uint8Array[] = [];
+			let n = 0;
+			if (reader) {
+				while (n < MAX_BYTES) {
+					const { done, value } = await reader.read();
+					if (done || !value) break;
+					chunks.push(value); n += value.length;
+				}
+				try { await reader.cancel(); } catch { /* já fechado */ }
+			}
+			const buf = new Uint8Array(Math.min(n, MAX_BYTES));
+			let o = 0;
+			for (const c of chunks) { const take = Math.min(c.length, buf.length - o); buf.set(c.subarray(0, take), o); o += take; if (o >= buf.length) break; }
+			return { status: r.status, ct: r.headers.get('content-type') || '', text: new TextDecoder().decode(buf), ms: Date.now() - t0 };
+		} catch (e) {
+			return { status: 0, ct: '', text: '', ms: Date.now() - t0, err: (e as Error).name || 'erro' };
 		}
-		const buf = new Uint8Array(Math.min(n, MAX_BYTES));
-		let o = 0;
-		for (const c of chunks) { const take = Math.min(c.length, buf.length - o); buf.set(c.subarray(0, take), o); o += take; if (o >= buf.length) break; }
-		return { status: r.status, ct: r.headers.get('content-type') || '', text: new TextDecoder().decode(buf), ms: Date.now() - t0 };
-	} catch (e) {
-		return { status: 0, ct: '', text: '', ms: Date.now() - t0, err: (e as Error).name || 'erro' };
-	}
+	};
 }
 
 const looksHtml = (g: Got) => /text\/html/i.test(g.ct) || /^\s*<(!doctype|html)/i.test(g.text.slice(0, 300));
@@ -137,8 +201,8 @@ const READ_TOOL = /^(search|get_|list_|lookup|describe|check_|find|read)/i;
 
 /** `via` permite analisar o próprio site: um Worker não consegue fazer fetch à própria zona (522),
     por isso os pedidos ao próprio domínio passam pelo handler do Worker em vez da rede. */
-export async function scan(target: URL, via?: Fetcher): Promise<ScanResult> {
-	fetcher = via ?? ((u, i) => fetch(u, i));
+export async function scan(target: URL, via?: Fetcher, own: string | null = null): Promise<ScanResult> {
+	const get = mkGet(via ?? ((u, i) => fetch(u, i)), own);
 	const base = target.origin;
 	const [robotsG, llms, llmsFull, agents, mcpJ, ucpJ] = await Promise.all([
 		get(`${base}/robots.txt`), get(`${base}/llms.txt`), get(`${base}/llms-full.txt`),
@@ -233,7 +297,7 @@ export async function scan(target: URL, via?: Fetcher): Promise<ScanResult> {
 	if (typeof mcp?.endpoint === 'string') endpoints.push(mcp.endpoint);
 	for (const svc of Object.values((ucp?.ucp?.services ?? {}) as Record<string, any[]>)) for (const s of svc || []) if (s?.transport === 'mcp' && typeof s.endpoint === 'string') endpoints.push(s.endpoint);
 	let toolNames: string[] = []; let l4 = 0; let l4detail = '';
-	const ep = endpoints.map((e) => normaliseTarget(e) ? e : null).find(Boolean) || null;
+	const ep = endpoints.map((e) => publicUrl(e)?.toString() ?? null).find(Boolean) || null;
 	if (ep) {
 		const r = await get(ep, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) });
 		let j: any = null; try { j = JSON.parse(r.text); } catch { /* não é JSON */ }
