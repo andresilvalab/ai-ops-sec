@@ -37,6 +37,6 @@
     "url": "https://github.com/andresilvalab/ai-ops-sec.git"
   },
   "devDependencies": {
-    "wrangler": "4.132.0"
+    "wrangler": "4.135.0"
   }
 }
