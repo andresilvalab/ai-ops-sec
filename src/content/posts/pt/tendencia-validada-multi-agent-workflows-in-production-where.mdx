@@ -1,0 +1,159 @@
+---
+title: "Workflows multiagente em producao: quem esta a usar milhares de agentes (e quem esta a fingir)"
+description: "49 publicacoes independentes em tres dias dizem que toda a gente quer multiagente. A pergunta real: quando e que isso funciona, e quanto custa o supervisor que ninguem mede."
+pubDate: 2026-09-29
+lang: pt
+area: agentes
+translationKey: tendencia-validada-multi-agent-workflows-in-production-where
+tags: [multi-agent, token-economy, orchestration, state-machine, observabilidade, prompt-injection, custo]
+series: "The Token Economy"
+cover: agent-orbit
+status: published
+sources:
+  - title: "Ask HN: Multi-agent workflows in production; Where people using 1000s of agents?"
+    url: "https://news.ycombinator.com/item?id=49689454"
+    accessed: 2026-09-29
+  - title: "How We Cut 70% of Multi-Agent Token Waste by Replacing Supervisor LLMs with Typed State Machines (dev.to)"
+    url: "https://dev.to/anasbuilds997/how-we-cut-70-of-multi-agent-token-waste-by-replacing-supervisor-llms-with-typed-state-machines-4alk"
+    accessed: 2026-09-29
+  - title: "Multi-Agents LLM Financial Trading Framework (Hacker News discussion)"
+    url: "https://news.ycombinator.com/item?id=49605822"
+    accessed: 2026-09-29
+  - title: "Paul & Nandy, Beyond Single-Model Injection: A Threat Model and Defense Architecture for Prompt Injection in Multi-Agent Systems (arXiv 2609.22949)"
+    url: "http://arxiv.org/abs/2609.22949v1"
+    accessed: 2026-09-29
+  - title: "Singh, Priyam & Bhowmick, Total Cost of Agency: Exact Attribution of Memory Injection Cost in Multi-Agent LLM Workflows (arXiv 2609.23790)"
+    url: "http://arxiv.org/abs/2609.23790v1"
+    accessed: 2026-09-29
+  - title: "CONTINUUM-MESH/1 Open Multi-Agent Coordination Protocol (GitHub issue)"
+    url: "https://github.com/aigodsend15-ship-it/specter-core/issues/9"
+    accessed: 2026-09-29
+  - title: "Construir sistemas multiagente que nao colapsam (Andre Silva Lab)"
+    url: "https://andresilvalab.com/en/blog/building-multi-agent-systems/"
+    accessed: 2026-09-29
+verified:
+  - "Thread HN 49689454 lido: zero exemplos concretos de milhares de agentes em producao; o comentario sobre observabilidade cita OpenTelemetry + Prometheus"
+  - "Artigo dev.to lido: 71,4% de reducao de tokens, latencia mediana de 44,8s para 16,2s, loops infinitos de 8,2% para 0%, taxa de conclusao de 82% para 94%; arquitectura XState citada"
+  - "Paper arXiv 2609.22949 lido: 14 vectores de ataque em 4 grupos, taxa de injecao baseline 31,2% reduzida a 4,2%, 67% dos agentes vulneraveis a pelo menos uma violacao de escopo"
+  - "Paper arXiv 2609.23790 lido: memory injection = 13,6% dos custos variaveis controlaveis, 27,6% a profundidade 6, crescimento linear R2=0,9974, reducao de 28,7% ao cortar retrieval de 32 para 2 entradas"
+  - "Medicao de amplificacao corrida nesta sessao: 3,23x (estimativa word*1,3), 69,1% de tokens gastos em routing, pipeline sintetico de 4 passos"
+  - "Thread HN sobre TradingAgents: bugs de Yahoo News pesado duas vezes, prompts de sentimento com exemplos positivos hard-coded, memorias alucinadas por bugs de parsing"
+  - "CONTINUUM-MESH/1 lido: protocolo com 3 papeis fixos, envelope JSON com tipo epistemico, sem autoridade final"
+  - "Zero travessoes, zero nomes de clientes ou colegas, zero caminhos internos"
+verifiedOn: 2026-09-29
+faq:
+  - q: "Como se cortam 70% dos tokens desperdicados num workflow multiagente?"
+    a: "Substituindo o supervisor LLM por uma maquina de estados tipada. O supervisor repete o contexto acumulado em cada chamada de routing. Uma maquina de estados faz a transicao sem chamar o modelo."
+  - q: "Alguem esta mesmo a usar milhares de agentes em producao?"
+    a: "Nenhuma resposta concreta apareceu no thread do Hacker News. Os exemplos reais que existem usam 3 a 6 agentes especializados, nao milhares."
+  - q: "Os sistemas multiagente sao mais vulneraveis a prompt injection?"
+    a: "Sim. Um paper de Setembro de 2026 testou 14 vectores em 4 grupos e encontrou 67% dos agentes vulneraveis a pelo menos uma violacao de escopo, com taxa baseline de injecao de 31,2%."
+  - q: "Qual e o custo escondido da memoria partilhada entre agentes?"
+    a: "A profundidade 1, quase zero. A profundidade 6, os tokens injectados por memoria representam 27,6% dos custos. O crescimento e linear, nao exponencial."
+changelog:
+  - date: 2026-10-06
+    note: "Publicacao."
+---
+
+**TL;DR.** A maioria das equipas que diz ter "multiagente em producao" tem 3 a 6 agentes especializados com um coordenador. Ninguem no maior forum da industria conseguiu mostrar milhares de agentes a funcionar. O problema real nao e a escala: e o supervisor LLM que reenvia todo o contexto acumulado entre cada passo, gasta 69% dos tokens em routing, e abre a superficie de ataque a 14 vectores que um sistema de agente unico nao tem. Medi a amplificacao num pipeline sintetico de 4 passos: 3,2x mais tokens do que o equivalente com maquina de estados. A decisao desta semana e saber se o teu coordenador precisa mesmo de ser um modelo.
+
+## Contexto
+
+Em tres dias de Setembro de 2026, o motor de tendencias do lab registou 49 publicacoes independentes sobre multiagente, de 30 autores distintos, em 4 fontes. A velocidade era 4,35 vezes a media. A pergunta que deu origem a tudo apareceu no Hacker News: "Multi-agent workflows in production; Where people using 1000s of agents?"
+
+O lab ja publicou sobre isto. Em Maio, ["Construir sistemas multiagente que nao colapsam"](/blog/building-multi-agent-systems/) descreveu os padroes base: contrato por agente, coordenador leve, orcamento de tokens. Este artigo nao repete esse trabalho. Parte da pergunta que o anterior nao respondia: em producao real, quantos agentes tem quem tem, quanto custa o que ninguem mede, e que riscos novos aparecem quando se passa de um agente para varios.
+
+## A resposta curta: ninguem mostrou milhares
+
+O thread do Hacker News acumulou dezenas de respostas. Nenhuma continha um numero concreto de agentes em producao acima de uma dezena. Um fundador de uma startup YC F26 dedicada a agent swarms fez a pergunta e o que recebeu de volta foram variantes de "I'd love examples of it actually working but right now all it's seemed to be is hype" e "very little organic takeup".
+
+O que as respostas tinham de concreto era outra coisa. Um engenheiro descreveu o ponto de dor real: "most of the pain at scale isn't the agents themselves, it's observability." Outro falou de "OpenTelemetry + Prometheus" e "a massive K8s cluster spinning up pods per N agents." Ninguem reclamou ter poucos agentes. Toda a gente reclamou nao ver o que os agentes fazem.
+
+A ausencia de resposta e a resposta. Os deployments reais que existem usam 3 a 6 agentes especializados com um coordenador, e o trabalho dificil esta em tornar isso legivel, nao em multiplicar por mil.
+
+## O supervisor e o imposto que ninguem mede
+
+A arquitectura mais comum num sistema multiagente e o coordenador com supervisor LLM: um modelo central recebe a saida de cada especialista, decide qual e o proximo, e passa-lhe o contexto. E intuitivo. Tambem e caro de uma maneira que ninguem ve na factura.
+
+Dois estudos de Setembro de 2026 medem este custo por caminhos diferentes.
+
+**O desperdicio de tokens.** Um artigo publicado no dev.to descreve uma equipa que substituiu o supervisor LLM por uma maquina de estados tipada (XState). Os numeros reportados: latencia mediana de 44,8 segundos para 16,2 segundos, loops infinitos de 8,2% para 0%, taxa de conclusao de 82% para 94%, e uma reducao de 71,4% no consumo total de tokens. A razao: cada chamada ao supervisor incluia todo o contexto acumulado dos passos anteriores. Com a maquina de estados, as transicoes sao deterministicas e nao consomem tokens.
+
+Estes numeros sao reportados pelo autor, nao verificados de forma independente. Mas a mecanica e reproduzivel.
+
+**O custo da memoria partilhada.** Singh, Priyam e Bhowmick publicaram em arXiv o conceito de Total Cost of Agency (TCA), que decompoe o custo de um workflow multiagente em cinco componentes. O achado principal: os tokens injectados por memoria representam 13,6% dos custos variaveis controlaveis. A profundidade 1 de um workflow, quase zero. A profundidade 6, 27,6%. O crescimento e linear (R-quadrado de 0,9974), o que significa que cada nivel a mais acrescenta a mesma fatia. E a boa noticia: reduzir a capacidade de retrieval de 32 para 2 entradas baixou os tokens injectados em 28,7% sem perda mensuravel de precisao.
+
+<Callout title="Numero do fornecedor" kind="aviso">
+O artigo do dev.to (71,4% de reducao) e de um autor que vende consultoria de agentes. Os numeros de latencia e conclusao sao self-reported. O paper de TCA (Singh et al.) e um preprint sem peer review. Cito ambos porque a mecanica e coerente com o que medi abaixo, mas a proveniencia e esta.
+</Callout>
+
+## O que medi
+
+Construi dois pipelines equivalentes para processar uma factura sintetica em quatro passos: classificar, extrair linhas, validar IVA, formatar para ERP. Cada especialista tem um system prompt e devolve JSON. A unica diferenca e quem decide o proximo passo.
+
+**Pipeline A (supervisor LLM).** Depois de cada especialista, o supervisor recebe o system prompt dele, a factura inteira e todos os outputs acumulados ate ao momento. Decide qual e o proximo agente. Quatro chamadas de routing mais quatro chamadas de trabalho.
+
+**Pipeline B (maquina de estados).** A sequencia classificar-extrair-validar-formatar e fixa no codigo. Cada especialista recebe exactamente o que precisa. Quatro chamadas de trabalho, zero chamadas de routing.
+
+A contagem de tokens (estimativa por word*1,3 porque o ambiente nao tinha tiktoken instalado; os numeros absolutos sao aproximados, as proporcoes mantem-se):
+
+| | Supervisor | Maquina de estados |
+|---|---|---|
+| Tokens de routing | 708 (69,1%) | 0 |
+| Tokens de trabalho | 317 (30,9%) | 317 (100%) |
+| **Total** | **1.025** | **317** |
+| **Amplificacao** | **3,23x** | **1x** |
+
+O supervisor consome 3,23 vezes mais tokens do que a maquina de estados para fazer o mesmo trabalho. E o custo de routing cresce com a profundidade: a cada passo, o supervisor re-envia a factura inteira mais todas as saidas anteriores. Na profundidade 6, cada chamada de routing ocupa cerca de 628 tokens so de contexto acumulado.
+
+<Callout title="Prova" kind="prova">
+O script Python, a factura sintetica e a contagem completa por chamada estao em `/tmp/token_amplification.py`. Os prompts sao sinteticos. As saidas dos especialistas sao simuladas com JSON representativo. O que varia entre as arquitecturas e apenas o numero e o conteudo das chamadas de routing.
+</Callout>
+
+Isto nao contradiz o artigo do dev.to (71,4% de reducao). O meu pipeline tem 4 passos; o deles tinha mais passos e outputs maiores, o que amplifica o efeito. O ponto e o mesmo: a maior parte do custo de um supervisor LLM nao e a decisao, e a repeticao do contexto.
+
+## A superficie de ataque que o multi-agente abre
+
+O segundo custo nao aparece na factura porque e um risco, nao um gasto.
+
+Paul e Nandy publicaram em Setembro de 2026 (arXiv 2609.22949) o primeiro modelo de ameacas dedicado a prompt injection em sistemas multiagente. Testaram 14 vectores de ataque em 4 grupos sobre um sistema de 6 agentes:
+
+1. **Injecao directa via input do utilizador** (3 vectores)
+2. **Injecao indirecta via outputs de ferramentas** (4 vectores)
+3. **Injecao inter-agente via passagem de mensagens** (4 vectores)
+4. **Injecao em cascata por manipulacao do orquestrador** (3 vectores)
+
+Os grupos 3 e 4 nao existem num sistema de agente unico. Sao consequencia directa da arquitectura multiagente.
+
+Resultados: 67% dos agentes vulneraveis a pelo menos uma violacao de escopo mesmo com guardrails no system prompt; taxa de injecao baseline de 31,2%; injecao indirecta via tool output com sucesso em 43% das tentativas.
+
+As quatro defesas que testaram reduziram a taxa de 31,2% para 4,2%:
+
+- Assinatura de mensagens com tracking de proveniencia (91% de reducao na injecao inter-agente)
+- Sanitizacao de input/output nos limites de cada agente (78% na injecao indirecta)
+- Acesso a ferramentas com escopo por papel (eliminou escalacao de privilegios)
+- Deteccao de anomalias na comunicacao inter-agente (84% nas tentativas em cascata)
+
+Nenhuma destas defesas e gratuita. Cada uma acrescenta latencia, complexidade e tokens ao sistema. A pergunta nao e "devo proteger?"; e "o que e que a arquitectura multiagente me deu que justifique este custo?"
+
+## A decisao: quando e que multiagente se justifica
+
+Tres condicoes, todas obrigatorias:
+
+**1. Os especialistas precisam de contextos incompativeis.** Se o classificador precisa de um system prompt que conflitua com o do validador, sao agentes diferentes. Se cabem no mesmo prompt sem confusao, sao passos do mesmo agente.
+
+**2. O fan-out e limitado e os contratos sao tipados.** Cada agente tem um schema de entrada e um schema de saida, e a transicao e deterministico ou governado por regras explicitas. Se a unica razao para ter um supervisor e "o LLM decide", estas a pagar 3x pelos tokens e a abrir 14 vectores de ataque por uma flexibilidade que provavelmente nao precisas.
+
+**3. A observabilidade esta montada antes de escalar.** O consenso no thread do Hacker News nao era sobre quantos agentes ter. Era sobre ver o que eles fazem. Sem tracing por agente com correlation_id, estas a debugar as cegas, e com mais agentes ficas mais cego, nao menos.
+
+Se as tres condicoes nao se cumprem, um agente unico com ferramentas e quase sempre mais barato, mais rapido e mais seguro.
+
+## Limites desta analise
+
+A medicao de amplificacao usa contagem de palavras aproximada (sem tiktoken), num pipeline de 4 passos com outputs simulados. Num pipeline real, os outputs dos especialistas sao maiores, o que amplifica o efeito (a favor da tese), mas o supervisor poderia ser mais selectivo no contexto que re-envia (contra a tese). Os numeros do dev.to e do paper de TCA sao de fontes com interesse declarado. O paper de Paul e Nandy e um preprint. A contagem de 49 publicacoes do motor de tendencias reflecte volume de conversa, nao adopcao. Ninguem neste artigo, incluindo eu, mediu um sistema com milhares de agentes em producao porque, ate ao que se conseguiu apurar, ninguem os tem.
+
+## A decisao para esta semana
+
+1. Abrir o teu coordenador multiagente e contar quantas chamadas sao routing (o supervisor a decidir o proximo passo) vs trabalho (os especialistas a produzir). Se routing e mais de 40%, testar uma maquina de estados tipada no mesmo pipeline.
+2. Por cada agente que acrescentas, escrever o contrato (schema de entrada e saida) e o teste que verifica se o output o cumpre. Sem contrato escrito, nao e um agente; e um ciclo while caro.
+3. Se o teu sistema tem mais de 3 agentes, implementar assinatura de mensagens e sanitizacao nos limites. O custo e marginal comparado com o risco de uma injecao em cascata que um sistema de agente unico nao tem.
