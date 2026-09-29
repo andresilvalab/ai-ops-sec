@@ -1,0 +1,6 @@
+# Redireccionamentos permanentes (Cloudflare Workers static assets). Só caminhos relativos.
+# 29-Set-2026: o slug do artigo multi-agent saiu do título do cartão do backlog ("Tendência validada: ...").
+/blog/tendencia-validada-multi-agent-workflows-in-production-where/ /blog/workflows-multiagente-em-producao/ 301
+/blog/tendencia-validada-multi-agent-workflows-in-production-where /blog/workflows-multiagente-em-producao/ 301
+/en/blog/tendencia-validada-multi-agent-workflows-in-production-where-en/ /en/blog/multi-agent-workflows-in-production/ 301
+/en/blog/tendencia-validada-multi-agent-workflows-in-production-where-en /en/blog/multi-agent-workflows-in-production/ 301
