@@ -40,6 +40,9 @@ const fullTitle = title === s.title ? `${s.title}: ${s.tagline}` : `${title} · 
 <link rel="sitemap" href={`${base}/sitemap-index.xml`} />
 <link rel="alternate" type="application/rss+xml" title={`${s.title} (${locale.toUpperCase()})`} href={rss} />
 <link rel="author" href={AUTHOR.github} />
+{/* Verificacao de identidade: o Mastodon e o Bluesky marcam o site como verificado quando ele aponta de volta. */}
+<link rel="me" href="https://infosec.exchange/@andre_lab" />
+<link rel="me" href="https://bsky.app/profile/andresilvalab.com" />
 <link rel="license" href="https://creativecommons.org/licenses/by/4.0/" />
 <meta name="generator" content={Astro.generator} />
 {noindex && <meta name="robots" content="noindex,follow" />}
