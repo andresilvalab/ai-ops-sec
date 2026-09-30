@@ -8,6 +8,8 @@ export const AUTHOR = {
 	github: 'https://github.com/andresilvalab',
 	repo: 'https://github.com/andresilvalab/ai-ops-sec',
 	linkedin: 'https://www.linkedin.com/in/andre-silva-business-automation/',
+	bluesky: 'https://bsky.app/profile/andresilvalab.com',
+	mastodon: 'https://infosec.exchange/@andre_lab',
 	company: { name: 'Wise Pirates', url: 'https://wisepirates.com/', contact: 'https://wisepirates.com/contacts/' },
 };
 

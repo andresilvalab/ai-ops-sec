@@ -7,7 +7,8 @@ const person = () => ({
 	'@id': PERSON_ID,
 	name: AUTHOR.name,
 	url: AUTHOR.github,
-	sameAs: [AUTHOR.github, AUTHOR.linkedin].filter(Boolean),
+	// os mesmos perfis que apontam de volta para o site (rel=me): liga as contas a mesma pessoa para motores e agentes
+	sameAs: [AUTHOR.github, AUTHOR.linkedin, AUTHOR.bluesky, AUTHOR.mastodon].filter(Boolean),
 });
 
 export function websiteLd(locale: Locale, siteUrl: string) {
