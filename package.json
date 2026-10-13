@@ -17,10 +17,10 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/mdx": "8.0.2",
+    "@astrojs/mdx": "8.0.3",
     "@astrojs/rss": "4.0.19",
     "@astrojs/sitemap": "3.7.4",
-    "astro": "7.3.5",
+    "astro": "7.3.6",
     "pagefind": "1.5.2",
     "satori": "0.33.5",
     "sharp": "0.35.5"
