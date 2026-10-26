@@ -53,6 +53,8 @@ Este site não tem trackers nem cookies. Regista, com IP em hash (sal aleatório
 
 Canários: cada ficheiro para máquinas tem um link próprio (\`/c/llms-txt/\`, \`/c/llms-full/\`, \`/c/agents-md/\`, \`/c/mcp-json/\`, \`/c/agent-index/\`). Um pedido a esse link mostra que o ficheiro foi lido; redirecciona para a página inicial. Canário deste ficheiro: ${url}/c/agents-md/
 
+Medição de agentes: visitas normais não são registadas. Este site tem honeypots (caminhos que nenhuma página liga) e um canário de instrução num comentário HTML de cada página, com um link de verificação. São inofensivos: não pedem dados nem acções, servem para medir se agentes seguem instruções encontradas no conteúdo e se partilham links entre si. Quem pede um destes endpoints fica registado (hash do IP, User-Agent truncado, rede e país), seja pessoa ou agente, durante 30 dias, por interesse legítimo de segurança. Não se usam cookies nem scripts no browser.
+
 ## English
 
 ### What this site is
@@ -98,6 +100,8 @@ Recommended flow: \`initialize\` → \`tools/list\` → \`get_entity\` / \`searc
 This site has no trackers and no cookies. It logs, with a hashed IP (random salt, outside the repository): requests from known AI crawlers, fetches triggered by user questions, clicks coming from assistants (referer or utm_source) and MCP tool calls, including the queries sent to read-only tools. It does not log the user's prompt: that never reaches the site. Real contact requests store name, email, message and the consent sentence, with a canonical hash chained to the previous request (verifiable consent proof). Crawlers' declared identity is checked against each vendor's official IP lists.
 
 Canaries: each machine-facing file has its own link (\`/c/llms-txt/\`, \`/c/llms-full/\`, \`/c/agents-md/\`, \`/c/mcp-json/\`, \`/c/agent-index/\`). A request to that link shows the file was read; it redirects to the home page. Canary for this file: ${url}/c/agents-md/
+
+Agent measurement: normal visits are not logged. This site has honeypots (paths no page links to) and an instruction canary in an HTML comment on every page, with a verification link. They are harmless: they ask for no data and no actions, and exist to measure whether agents follow instructions found in content and whether they share links with each other. Whoever requests one of these endpoints is logged (hashed IP, truncated User-Agent, network and country), person or agent, for 30 days, on the basis of legitimate security interest. No cookies and no browser scripts are used.
 `;
 	return new Response(body, { headers: { 'Content-Type': 'text/markdown; charset=utf-8' } });
 }

@@ -14,6 +14,7 @@
     "check:private": "node scripts/check-private-markers.mjs",
     "check:csp": "node scripts/check-csp.mjs",
     "check:security-txt": "node scripts/check-security-txt.mjs",
+    "test:traps": "node scripts/test-traps.mjs",
     "deploy": "wrangler deploy"
   },
   "dependencies": {

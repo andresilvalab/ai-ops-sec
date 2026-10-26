@@ -26,6 +26,8 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Medição de agentes (veredictos do canário)
+        run: npm run test:traps
       - name: Build (URL de produção)
         run: npm run build
         env:

@@ -6,6 +6,8 @@
    2. Servidor MCP em /mcp (JSON-RPC 2.0, sem estado): tools de leitura sobre o índice de artigos e
       uma tool de contacto que exige consentimento explícito e nasce em dry_run.
    3. Exportação para a Torre em /api/agent-obs/export, protegida por token (hash em vars).
+   4. Medição de agentes (traps.ts): honeypots e canário de instrução, declarados no agents.md. Só se regista
+      quem pede um endpoint de medição; a emissão do canário nas páginas não escreve nada.
    O prompt do utilizador nunca chega aqui: o que se regista é o que o agente escolhe enviar às tools. */
 
 import { AgentObs } from './obs';
@@ -13,10 +15,11 @@ import { classify, isAiReferral } from './bots';
 import { handleMcp } from './mcp';
 import { sha256Hex } from './util';
 import { normaliseTarget, scan } from './scan';
+import { injectar, pathGravavel, prefixo, respostaArmadilha, runId, trapDe, verificar, type TrapEnv } from './traps';
 
 export { AgentObs };
 
-export interface Env {
+export interface Env extends TrapEnv {
 	ASSETS: { fetch(req: Request): Promise<Response> };
 	AGENT_OBS: DurableObjectNamespace;
 	OPS_TOKEN_HASH: string;
@@ -29,11 +32,15 @@ const SCAN_MAX = 10;           // scans por hora, por ip_hash
 const SCAN_CACHE_S = 1800;     // o mesmo domínio devolve o resultado guardado durante 30 min
 
 /* Canários: um link que só existe num ficheiro para máquinas. Um pedido a este caminho prova que
-   quem o fez leu aquele ficheiro. Anunciados como tal no agents.md (transparência, não armadilha). */
+   quem o fez leu aquele ficheiro. Anunciados como tal no agents.md, tal como as armadilhas de traps.ts. */
 const CANARIES = new Set(['llms-txt', 'llms-full', 'agents-md', 'mcp-json', 'agent-index']);
 /* Assets que não dizem nada sobre leitura (CSS, fontes, imagens, scripts): não gastam linhas no DO.
    Os ficheiros para máquinas (.txt, .xml, .json, .md) ficam de fora desta lista de propósito. */
 const STATIC_ASSET = /\.(css|js|mjs|map|png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|otf|mp4|webm)$/i;
+
+/* Pedidos internos do Scanner Agent-Ready sobre o próprio site: não recebem canário (marca em memória,
+   não num cabeçalho, que qualquer cliente podia forjar). */
+const INTERNO = new WeakSet<Request>();
 
 function obs(env: Env): DurableObjectStub {
 	return env.AGENT_OBS.get(env.AGENT_OBS.idFromName('main'));
@@ -71,7 +78,8 @@ const worker = {
 			}
 			let cursors: unknown = undefined;
 			try { cursors = JSON.parse(url.searchParams.get('cursors') || 'null') ?? undefined; } catch { cursors = undefined; }
-			const r = await post(stub, '/export', { since, limit, cursors });
+			const tables = (url.searchParams.get('tables') || '').split(',').filter((t) => /^[a-z_]{1,32}$/.test(t));
+			const r = await post(stub, '/export', { since, limit, cursors, tables });
 			ctx.waitUntil(post(stub, '/log-request', { ip, tool: 'agent-obs-export', method: 'GET', status: 'ok', user_agent: ua.slice(0, 500) }));
 			return new Response(await r.text(), { status: 200, headers: { 'content-type': 'application/json' } });
 		}
@@ -118,11 +126,31 @@ const worker = {
 			if (!rate.allowed) return json({ error: 'rate_limited', message: 'Limite de 10 análises por hora.' }, 429, { 'Retry-After': '3600' });
 			const own = new URL(env.SITE_URL).hostname;
 			const via = target.hostname === own
-				? (u: string, init?: RequestInit) => new URL(u).hostname === own ? worker.fetch(new Request(u, init), env, ctx) : fetch(u, init)
+				? (u: string, init?: RequestInit) => {
+					if (new URL(u).hostname !== own) return fetch(u, init);
+					const r = new Request(u, init); INTERNO.add(r);
+					return worker.fetch(r, env, ctx);
+				}
 				: undefined;
 			const result = await scan(target, via, target.hostname === own ? own : null);
 			ctx.waitUntil(post(stub, '/scan-log', { ip, host: target.hostname, score: result.score, result, cached: false }));
 			return json({ cached: false, ...result }, 200, { 'cache-control': 'no-store' });
+		}
+
+		// ── medição de agentes: honeypots e links do canário ─────────────────
+		const armadilha = trapDe(path);
+		if (armadilha) {
+			const bot = classify(ua, request.headers);
+			const asn = (cf.asn as number) ?? null;
+			const v = armadilha.token ? await verificar(env, armadilha.token, { ip, asn, ua }, !!bot) : null;
+			const run = await runId(env, request.headers.get('x-zeus-run'));
+			ctx.waitUntil(post(stub, '/log-trap', {
+				ip, origem: prefixo(ip, 'tecto'), trap: armadilha.trap, path: pathGravavel(path, armadilha.trap),
+				veredicto: v?.veredicto ?? null, tok: v?.tok ?? null, tok_pagina: v?.tok_pagina ?? null, tok_hora: v?.tok_hora ?? null,
+				rede: v?.rede ?? null, ...run, asn, country: (cf.country as string) ?? null, ua: ua.slice(0, 300),
+				operador: bot?.operador ?? null, bot: bot?.bot ?? null, signed_agent: request.headers.has('signature-agent'),
+			}));
+			return respostaArmadilha(armadilha.trap);
 		}
 
 		// ── observabilidade por etapa, depois entrega o asset ─────────────────
@@ -149,7 +177,8 @@ const worker = {
 			const h = new Headers(res.headers); h.set('content-type', 'text/markdown; charset=utf-8');
 			return new Response(res.body, { status: res.status, headers: h });
 		}
-		return res;
+		if (INTERNO.has(request)) return res;
+		return injectar(request, res, env, { ip, asn: (cf.asn as number) ?? null, ua });
 	},
 };
 

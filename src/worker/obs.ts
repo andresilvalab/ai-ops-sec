@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS scans (
   id TEXT PRIMARY KEY, ts TEXT NOT NULL, host TEXT NOT NULL, score INTEGER, result TEXT, ip_hash TEXT, cached INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS scans_host ON scans(host, ts);
 CREATE TABLE IF NOT EXISTS ranges (operador TEXT NOT NULL, cidr TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS traps (
+  id TEXT PRIMARY KEY, ts TEXT NOT NULL, trap TEXT NOT NULL, path TEXT, veredicto TEXT, run_id TEXT, run_invalido INTEGER,
+  ip_hash TEXT, rede TEXT, asn INTEGER, country TEXT, ua TEXT, operador TEXT, bot TEXT, verificado INTEGER,
+  signed_agent INTEGER, tok TEXT, tok_pagina TEXT, tok_hora INTEGER);
+CREATE INDEX IF NOT EXISTS traps_ts ON traps(ts);
+CREATE INDEX IF NOT EXISTS traps_ip ON traps(ip_hash, ts);
 `;
 // Colunas acrescentadas depois do primeiro deploy (ALTER falha se já existirem: ignora-se).
 const MIGRATIONS = [
@@ -42,6 +48,13 @@ const GENESIS = '0'.repeat(64);
 const RANGES_TTL_MS = 24 * 3600_000;
 const HIT_MAX_PER_H = 300;     // linhas de hits por origem e hora; acima disto conta-se, não se guarda
 const CANARY_MAX_PER_H = 10;   // um canário lido 10 vezes na mesma hora pela mesma origem já provou o que tinha a provar
+/* Medição de agentes (traps): scanners de .env martelam, por isso os tectos são apertados e o excedente conta-se.
+   A origem é o IP em v4 e o /64 em v6 (senão um /64 dava 2^64 origens). Cada par (token, rede, armadilha) só se
+   grava uma vez e cada token guarda no máximo 20 redes: chega para provar transferência e não deixa envenenar. */
+const TRAP_MAX_ORIGEM_H = 30;
+const TRAP_MAX_GLOBAL_H = 500;
+const TRAP_MAX_REDES_TOKEN = 20;
+const TRAP_RETENCAO_MS = 30 * 24 * 3600_000;
 
 export class AgentObs extends DurableObject {
 	private ready = false;
@@ -117,6 +130,8 @@ export class AgentObs extends DurableObject {
 	   sai no export (`dropped_hits`), para a Torre saber que a contagem daquela hora é um piso. */
 	private budget = new Map<string, { n: number; until: number }>();
 	private dropped = 0;
+	private droppedTraps = 0;
+	private lastTrapPurge = 0;
 	private unauthorized = 0;   // tentativas de export sem token desde o ultimo arranque do objecto; nunca escritas
 	private within(key: string, max: number): boolean {
 		const now = Date.now();
@@ -150,6 +165,43 @@ export class AgentObs extends DurableObject {
 					body.ua ?? null, body.referer_src ?? null, body.country ?? null, body.asn ?? null, await this.ipHash(ip),
 					body.signed_agent ? 1 : 0, body.canario ?? null, verificado, body.status ?? null, body.bytes ?? null,
 				);
+				return ok();
+			}
+			case '/log-trap': {
+				const trap = String(body.trap);
+				const tok = (body.tok as string) ?? null;
+				const ipHash = await this.ipHash(ip);
+				/* Duas guardas: em memória por origem (/64 em v6), que apanha rotação dentro do prefixo, e uma contagem
+				   durável por ip_hash na última hora, que sobrevive ao objecto ser despejado por inactividade (sem ela,
+				   um scanner lento recomeçava o tecto a cada despejo). A contagem lê no máximo 30 linhas pelo índice. */
+				const ultimaHora = new Date(Date.now() - 3600_000).toISOString();
+				const jaGravadas = Number(sql.exec('SELECT COUNT(*) AS n FROM (SELECT 1 FROM traps WHERE ip_hash = ? AND ts > ? LIMIT ?)', ipHash, ultimaHora, TRAP_MAX_ORIGEM_H).one().n);
+				const okOrigem = jaGravadas < TRAP_MAX_ORIGEM_H && this.within(`t:${String(body.origem ?? ip)}`, TRAP_MAX_ORIGEM_H);
+				const okGlobal = okOrigem && this.within('t:*', TRAP_MAX_GLOBAL_H);
+				const okDedupe = okGlobal && (!tok || this.within(`d:${tok}:${String(body.rede)}:${trap}`, 1));
+				const okRedes = okDedupe && (!tok || this.within(`n:${tok}`, TRAP_MAX_REDES_TOKEN));
+				if (!okRedes) {
+					this.droppedTraps += 1;
+					if (this.droppedTraps % 20 === 0) await this.ctx.storage.put('dropped_traps', ((await this.ctx.storage.get<number>('dropped_traps')) ?? 0) + 20);
+					return ok();
+				}
+				const operador = (body.operador as string) ?? null;
+				const verificado = body.bot ? await this.verify(ip, operador) : null;
+				let veredicto = (body.veredicto as string) ?? null;
+				// Crawler verificado por IP que segue o link: extractor de um operador conhecido, nunca transferência.
+				if (verificado === 1 && veredicto && !['forjado', 'token_velho', 'sem_segredo'].includes(veredicto)) veredicto = 'crawler_verificado';
+				// Sem await entre aqui e o INSERT: o DO serializa, e a linha entra inteira.
+				sql.exec(
+					`INSERT INTO traps (id, ts, trap, path, veredicto, run_id, run_invalido, ip_hash, rede, asn, country, ua, operador, bot, verificado, signed_agent, tok, tok_pagina, tok_hora)
+					 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+					crypto.randomUUID(), nowIso(), trap, body.path ?? null, veredicto, body.run_id ?? null, body.run_invalido ? 1 : 0,
+					ipHash, body.rede ?? null, body.asn ?? null, body.country ?? null, body.ua ? String(body.ua).slice(0, 300) : null,
+					operador, body.bot ?? null, verificado, body.signed_agent ? 1 : 0, tok, body.tok_pagina ?? null, body.tok_hora ?? null,
+				);
+				if (Date.now() - this.lastTrapPurge > 3600_000) {
+					this.lastTrapPurge = Date.now();
+					sql.exec('DELETE FROM traps WHERE ts < ?', new Date(Date.now() - TRAP_RETENCAO_MS).toISOString());
+				}
 				return ok();
 			}
 			case '/log-request': {
@@ -227,18 +279,23 @@ export class AgentObs extends DurableObject {
 				const hits = page('hits', 'ts');
 				const contacts = page('contacts', 'created_at');
 				const scans = page('scans', 'ts', 'id, ts, host, score, cached, ip_hash');
+				// Tabelas opcionais: só saem (com cursor) quando a Torre as pede, para nenhum cursor avançar sem quem guarde as linhas.
+				const tables = Array.isArray(body.tables) ? (body.tables as string[]) : [];
+				const traps = tables.includes('traps') ? page('traps', 'ts') : null;
 				const rangesAt = (await this.ctx.storage.get<number>('ranges_at')) ?? 0;
 				const rangesN = sql.exec('SELECT operador, COUNT(*) AS n FROM ranges GROUP BY operador').toArray();
 				const next = (table: string, xs: Record<string, unknown>[], k: string) => {
 					const l = xs[xs.length - 1];
 					return l ? { ts: String(l[k]), id: String(l.id) } : cur[table] ?? { ts: since, id: '' };
 				};
-				const cursors = { requests: next('requests', rows, 'created_at'), hits: next('hits', hits, 'ts'), contacts: next('contacts', contacts, 'created_at'), scans: next('scans', scans, 'ts') };
-				const more = [rows, hits, contacts, scans].some((xs) => xs.length === limit);
+				const cursors: Record<string, { ts: string; id: string }> = { requests: next('requests', rows, 'created_at'), hits: next('hits', hits, 'ts'), contacts: next('contacts', contacts, 'created_at'), scans: next('scans', scans, 'ts') };
+				if (traps) cursors.traps = next('traps', traps, 'ts');
+				const more = [rows, hits, contacts, scans, ...(traps ? [traps] : [])].some((xs) => xs.length === limit);
 				const last = (xs: Record<string, unknown>[], k: string) => (xs.length === limit ? (xs[xs.length - 1][k] as string) : null);
 				return json({
 					generated_at: nowIso(), since, rows, hits, contacts, scans, cursors, more,
 					dropped_hits: ((await this.ctx.storage.get<number>('dropped_hits')) ?? 0) + (this.dropped % 50),
+					...(traps ? { traps, dropped_traps: ((await this.ctx.storage.get<number>('dropped_traps')) ?? 0) + (this.droppedTraps % 20) } : {}),
 					unauthorized_export_attempts: this.unauthorized,
 					ranges: { refreshed_at: rangesAt ? new Date(rangesAt).toISOString() : null, operators: rangesN },
 					next_since: last(rows, 'created_at') ?? last(hits, 'ts'),

@@ -33,6 +33,7 @@ export async function GET({ site }: APIContext) {
 		'',
 		'## Canary',
 		`- [Canary link for this file](${abs('/c/llms-txt/')}): requests to this URL are counted to learn which agents read llms.txt; it redirects to the home page. See /agents.md, section Transparency.`,
+		'- Agent measurement: pages carry a declared instruction canary in an HTML comment and the site has honeypots. Harmless; whoever requests them is logged for 30 days. See /agents.md, section Transparency.',
 		'',
 	].join('\n');
 	return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });

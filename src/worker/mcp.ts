@@ -163,7 +163,7 @@ function policies(lang: Lang, env: Env) {
 	const pt = lang === 'pt';
 	return {
 		license: pt ? 'Texto CC BY 4.0, código MIT. Citar pelo URL e pela data do artigo.' : 'Text CC BY 4.0, code MIT. Cite by article URL and date.',
-		tracking: pt ? 'Sem trackers nem cookies. Visitas humanas não são registadas.' : 'No trackers, no cookies. Human visits are not logged.',
+		tracking: pt ? 'Sem trackers nem cookies. Visitas normais não são registadas; quem pede um endpoint de medição (honeypot ou link do canário) fica registado 30 dias, ver /agents.md.' : 'No trackers, no cookies. Normal visits are not logged; whoever requests a measurement endpoint (honeypot or canary link) is logged for 30 days, see /agents.md.',
 		agent_logging: pt
 			? 'Pedidos de crawlers de IA e cliques vindos de assistentes são registados com IP em hash (sal aleatório, fora do repositório). As queries enviadas às tools de leitura são registadas para melhorar o conteúdo.'
 			: 'Requests from AI crawlers and clicks coming from assistants are logged with a hashed IP (random salt, outside the repository). Queries sent to read-only tools are logged to improve the content.',
