@@ -145,8 +145,10 @@ const worker = {
 			const h = new Headers(res.headers); h.set('content-type', 'text/plain; charset=utf-8');
 			return new Response(res.body, { status: res.status, headers: h });
 		}
+		// text/plain e não text/markdown: a ferramenta de leitura do ChatGPT devolveu "não consegui interpretar o formato
+		// Markdown" com 200 no /agents.md e leu sem problema o /llms.txt (text/plain) dois minutos depois (26-Out-2026).
 		if (path === '/agents.md') {
-			const h = new Headers(res.headers); h.set('content-type', 'text/markdown; charset=utf-8');
+			const h = new Headers(res.headers); h.set('content-type', 'text/plain; charset=utf-8');
 			return new Response(res.body, { status: res.status, headers: h });
 		}
 		return res;
