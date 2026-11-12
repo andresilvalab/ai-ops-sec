@@ -1,0 +1,189 @@
+---
+title: "I built a site for AI agents to read. In 48 days: 6,877 bot requests, 20 question-time reads"
+description: "WARC's Marketer's Toolkit 2027 cites that 63% of a brand's LLM visibility comes from the equity it already has. I measured the opposite case: a new site, no brand, everything agents ask for."
+pubDate: 2026-11-12
+lang: en
+area: agentes
+translationKey: site-para-agentes-pedidos-de-bots-leituras-por-pergunta
+tags: [agent-ready, geo, llms-txt, mcp, observability, crawlers, measurement]
+cover: data-stream
+status: published
+sources:
+  - title: "WARC, The Marketer's Toolkit 2027, Sample (9 Nov 2026)"
+    url: "https://www.warc.com/en/article/the-marketers-toolkit-2027-sample-23d3a5e296c4469eb729624359347df8"
+    accessed: 2026-11-12
+  - title: "WARC, The Marketer's Toolkit 2027 (9 Nov 2026)"
+    url: "https://www.warc.com/en/article/the-marketers-toolkit-2027-4288c659f02c4ed2857a1732d311eeb1"
+    accessed: 2026-11-12
+  - title: "MediaNews4U, Only 46% of marketers expect business conditions to improve in 2027: WARC (10 Nov 2026)"
+    url: "https://www.medianews4u.com/only-46-of-marketers-expect-business-conditions-to-improve-in-2027-warc/"
+    accessed: 2026-11-12
+  - title: "Bizcommunity, AI agents could influence $3.35tn in consumer spending by 2030, on the PHD and WARC study From abundance to agents (22 Jul 2026)"
+    url: "https://www.bizcommunity.com/article/ai-agents-could-influence-335tn-in-consumer-spending-by-2030-523880a"
+    accessed: 2026-11-12
+  - title: "Puerto, Gubri, Green, Oh and Yun, C-SEO Bench: Does Conversational SEO Work? (arXiv 2506.11097, NeurIPS Datasets and Benchmarks 2025)"
+    url: "https://arxiv.org/abs/2506.11097"
+    accessed: 2026-11-12
+  - title: "Ahrefs, We Tracked 1,885 Pages Adding Schema. AI Citations Barely Moved. (11 May 2026)"
+    url: "https://ahrefs.com/blog/schema-ai-citations/"
+    accessed: 2026-11-12
+  - title: "Schulte, Bleeker and Kaufmann, Don't Measure Once: Measuring Visibility in AI Search (arXiv 2604.07585, 8 Apr 2026)"
+    url: "https://arxiv.org/abs/2604.07585"
+    accessed: 2026-11-12
+  - title: "André Silva Lab, source code of the site and its observation Worker (public repository)"
+    url: "https://github.com/andresilvalab/ai-ops-sec"
+    accessed: 2026-11-12
+verified:
+  - "Toolkit 2027, sample PDF read page by page: 77%, 69% and 8% in the chart and text on p. 8; $944 billion and $3.4 trillion on p. 7; 63%, 22%, 11% and 4% attributed to the agency Charlie Oscar on p. 9; the two jobs (priming and proving) attributed to 21st Century Brand on p. 9; the warning about AI-friendly content in the first takeaway on p. 13; the Leroy Merlin case with Jellyfish (25% versus 8%) on p. 12"
+  - "Toolkit publication date (9 Nov 2026) confirmed on WARC's pages; the 69%, the 8%, the survey of more than 1,000 marketers in September and October 2026 and the PHD and WARC forecast confirmed in MediaNews4U's report of 10 Nov 2026"
+  - "PHD and WARC forecast: $944 billion in 2026 and $3.35 trillion in 2030 confirmed in Bizcommunity's report of 22 Jul 2026; the Toolkit rounds to 3.4"
+  - "Charlie Oscar's 63%, 22%, 11% and 4% were NOT confirmed in the primary source, which sits behind WARC's subscription; the text says they reach me through the report"
+  - "C-SEO Bench: abstract read on arXiv; 'largely ineffective', frequent negative impact on document ranking, traditional SEO more effective, gains decreasing with the number of adopters, two tasks with three domains each, accepted at NeurIPS Datasets and Benchmarks 2025"
+  - "Ahrefs (11 May 2026): 1,885 pages that added JSON-LD between August 2025 and March 2026; AI Overviews -4.6% (significant), AI Mode +2.4% and ChatGPT +2.2% (indistinguishable from zero), read in the article"
+  - "Don't Measure Once (arXiv 2604.07585): abstract read; answers vary across runs, prompts and time, a one-off observation is unreliable, visibility is treated as a distribution"
+  - "Site numbers counted during this check in the observation database, window 25 Sep to 11 Nov 2026 (UTC): 6,877 requests; 2,719, 2,015, 2,107, 30 and 6 by class, which add up to the total; the 30 question-time reads listed one by one, 10 of them between 10:53 and 11:09 UTC on 26 Oct; no assistant referer or utm_source; no third-party calls to the MCP server's tools; 21 CensysInspect sessions and 3 AgentTrustBot sessions; 18 requests to llms.txt, 8 to llms-full.txt, 1 to agents.md, 0 to the MCP manifest and 1,317 to robots.txt"
+  - "Coverage: all 26 texts requested by at least one index crawler; Googlebot and bingbot 25 of 26 each, Applebot 8, OAI-SearchBot 5, PerplexityBot 0, counted by article path"
+  - "Search Console: 257 impressions and 4 clicks between 14 Oct and 10 Nov 2026 (28 days), read from the lab's daily feed"
+  - "Stack confirmed in the site's public repository: 7 tools on the MCP server, bot classification by stage, first commit on 16 Sep 2026"
+  - "Zero em dashes, no names of people or accounts, zero internal paths"
+verifiedOn: 2026-11-12
+changelog:
+  - date: 2026-11-12
+    note: "Published."
+---
+
+**TL;DR.** WARC's Marketer's Toolkit 2027 cites data from the agency Charlie Oscar: 63% of a brand's LLM visibility comes from the equity it already has and 11% comes from citations. This site is the opposite case. It has been live since 16 September, it has no brand, and it has everything that is recommended for being read by agents: an open robots.txt, llms.txt, agents.md, JSON-LD and an MCP server. In 48 days I logged 6,877 bot requests and 20 reads that happened because someone asked an assistant something. Clicks coming from assistants: zero. Third-party calls to the MCP server's tools: zero. The machine layer got the site into the indexes and did not make anyone ask about it. If you are deciding where to put next month's work, first split crawl from question-time reads in your logs, treat readability as a few days of hygiene, and expect the rest to be earned outside the site.
+
+## What the report says
+
+WARC published the Marketer's Toolkit 2027 on 9 November 2026. I read the sample version, which carries the first of five chapters in full: "The drive to delegation", about consumers handing tasks to AI agents, purchases included.
+
+Three numbers in the chapter matter to people who build.
+
+The first comes from WARC's annual survey of about 1,000 marketers, run in September and October 2026 (p. 8). 77% predict that, over the next three years, customers will "often" read AI summaries instead of clicking through on search results. 69% say the same about using agents to discover products and brands. Only 8% expect the purchase itself to be "often" fully delegated to an agent. These are marketers' predictions about their customers. Nobody measured consumer behaviour here.
+
+The second is the size PHD and WARC give the phenomenon (p. 7): "agent-facilitated" consumer spending of $944 billion in 2026 and $3.4 trillion in 2030. The original study, "From abundance to agents", says $3.35 trillion. It is a forecast.
+
+The third is what made me write this article (p. 9). The Toolkit cites data from the agency Charlie Oscar on where a brand's LLM visibility comes from: 63% from the equity the brand already has, 22% from current marketing, 11% from citations in query responses and 4% from influencer and PR reach.
+
+The chapter takes two things from this. A brand now has two audiences, people and machines, and the report uses a framework from the consultancy 21st Century Brand with two jobs: "priming", which is building familiarity with people, and "proving", which is surfacing the evidence machines can read (reviews, structured data, editorial coverage). Then it closes with a warning (p. 13): the performance era led many marketers to neglect brand building, and there will be pressure to repeat the error, this time by focusing everything on "AI-friendly" content.
+
+The chapter does not show what happens to someone who only does the second part. I have a site like that.
+
+## A site with no brand and the whole layer
+
+andresilvalab.com has been live since 16 September 2026. It has 13 texts, each in Portuguese and in English, and one author. In Google Search, in the 28 days from 14 October to 10 November, it had 257 impressions and 4 clicks. It is the closest thing to zero equity I can measure.
+
+In return, it has the complete machine layer:
+
+- a robots.txt that lets in answer-engine crawlers and training crawlers;
+- llms.txt, llms-full.txt and agents.md;
+- JSON-LD on every article;
+- a manifest at `/.well-known/mcp.json` and a public MCP server with 7 tools, six read-only and one contact request that requires explicit consent.
+
+The code is in the [site's public repository](https://github.com/andresilvalab/ai-ops-sec). The [scanner](/en/scanner/) shows how your own domain does on the same layers.
+
+## How I measured
+
+A Worker runs in front of the pages and logs every request from a known AI bot, classified by the stage that bot works at:
+
+1. Index crawl (Googlebot, bingbot, OAI-SearchBot, Applebot, PerplexityBot). The engine stores the page so it can find it later.
+2. Training crawl (GPTBot, ClaudeBot, meta-externalagent, Amazonbot).
+3. Question-time read (ChatGPT-User, Claude-User, Perplexity-User, NotebookLM). The assistant fetches the page because a person asked it for something at that moment.
+4. Click. A person arrives at the site from an assistant, identified by the referer or by utm_source.
+5. A call to a tool on the MCP server.
+
+Ordinary human visits are not logged and the site has no trackers. When an operator publishes the IP list of its bots, each request is verified against it.
+
+Stage 3 is the only one where the site sees, from its own side, that someone asked a question and that an assistant thought the answer might be here.
+
+## What I measured in 48 days
+
+Window: 25 September to 11 November 2026.
+
+| Stage | Requests | Who |
+|---|---|---|
+| Index crawl | 2,719 | Googlebot 1,426, bingbot 763, Applebot 265, OAI-SearchBot 149, meta-webindexer 108, PerplexityBot 7, DuckDuckBot 1 |
+| Training crawl | 2,015 | meta-externalagent 969, ClaudeBot 653, Amazonbot 287, GPTBot 104, others 2 |
+| SEO bots and other crawlers | 2,107 | exa.ai 645, Semrush 558, Ahrefs 462, others 442 |
+| Question-time read | 30 | 20 after removing the 10 I triggered myself |
+| Click coming from an assistant | 0 | |
+| MCP server tool, by third parties | 0 | |
+| **Total logged** | **6,877** | |
+
+The 6 requests missing from the total are 5 to control URLs that exist only for measurement and 1 visit with a search-engine referer to a path that does not exist.
+
+### The crawlers came
+
+All 26 texts were requested by at least one index crawler. Googlebot and bingbot requested 25 of the 26 each. Applebot requested 8. OAI-SearchBot, which feeds ChatGPT's search, requested 5, once each. PerplexityBot made 7 requests and none was for an article.
+
+### The questions mostly did not
+
+Of the 30 question-time reads, 10 happened within 17 minutes on 26 October, when I asked several assistants to read files on the site. I remove them. That leaves 20 in 48 days:
+
+- 14 from ChatGPT-User, all from IPs OpenAI publishes as its own;
+- 4 from NotebookLM, at two moments (3 and 14 October), always for the same article;
+- 2 from Claude-User, at a single moment. They came from a shared cloud, outside the IP list Anthropic publishes, so I do not count them as verified.
+
+Thirteen were for articles, and only three of them: the one on [multi-agent workflows](/en/blog/multi-agent-workflows-in-production/) (7), the one on [J-Lens](/en/blog/j-lens-what-the-agent-thinks-says-and-does/) (5) and the one on the [OWASP Agentic Top 10](/en/blog/owasp-agentic-top-10-asi01-a-asi10-mapeado-a-um-stack-real-en/) (1). Six were for the home page and one for robots.txt. Every article read was of the English version. The 13 Portuguese versions had zero.
+
+The pace did not grow. There were 14 reads between 28 September and 11 October, 6 between 12 and 27 October, and none from 28 October to 11 November.
+
+I do not know who asked or what they asked. The site never sees the prompt or the person, only the assistant's request. Some of these 20 may have been my own questions on another day, so 20 is a ceiling.
+
+### The machine files went almost unread
+
+Outside my test of 26 October:
+
+| File | Requests | Who |
+|---|---|---|
+| llms.txt | 18 | bingbot 5, Googlebot 4, Ahrefs 3, meta-externalagent 3, OAI-SearchBot 1, others 2 |
+| llms-full.txt | 8 | Amazonbot 7, meta-externalagent 1 |
+| agents.md | 1 | Google-Extended |
+| MCP manifest | 0 | |
+| robots.txt | 1,317 | 19% of all requests |
+
+No assistant fetched llms.txt or agents.md on its own initiative while answering someone. They read them when I asked.
+
+### The MCP server was found by scanners
+
+No request arrived with an assistant's referer or utm_source. This number undercounts, because not every app sends a referer.
+
+The MCP server had zero tool calls from third parties. The ones that found it were two internet scanners: CensysInspect opened a session and listed the tools 21 times, and an AgentTrustBot opened a session 3 times. No known AI bot requested the manifest.
+
+## What this says and what it does not
+
+The numbers come from one site and do not prove Charlie Oscar's 63%. They are what that 63% would lead you to expect: without equity, what is left is small, even with the whole technical layer in place.
+
+The other research I know points the same way.
+
+C-SEO Bench, accepted at NeurIPS 2025, tested content-rewriting methods for conversational engines across two tasks and six domains. The authors conclude that most of them are "largely ineffective" and often hurt the document's ranking. They also conclude that traditional SEO works better and that gains shrink as more competitors adopt the same methods.
+
+Ahrefs tracked 1,885 pages that added JSON-LD between August 2025 and March 2026 and compared them with control pages. Citations in AI Mode (+2.4%) and in ChatGPT (+2.2%) were indistinguishable from zero. In AI Overviews they fell 4.6%.
+
+<Callout title="Provenance" kind="warning">
+Ahrefs sells SEO tools and the study is its own. Charlie Oscar's numbers reach me through WARC's report, whose sample does not describe the method. I have not read the original source, which sits behind a subscription.
+</Callout>
+
+My numbers do not say the machine layer is useless. It is cheap, it got 26 texts into the indexes, and it is a precondition for everything that comes after. They also say nothing about a site with a brand. The case the Toolkit itself presents (p. 12) is Leroy Merlin in France, measured with the agency Jellyfish's Share of Model system: 25% visibility in AI search against 8% for the nearest competitor. Leroy Merlin already led traditional search.
+
+## The decision for this week
+
+1. Split index crawl, training crawl and question-time reads in your server logs, by User-Agent. Without that split, 6,877 bot requests look like interest. They were 20 reads.
+2. Treat machine readability as hygiene. Here it was a few days of work, done once. It does not justify a quarter.
+3. Expect the rest to be earned outside the site. That is where Charlie Oscar's data puts the largest share of visibility, and it is the part this site does not measure yet.
+4. When you measure your visibility in AI answers, repeat the measurement. A paper from April 2026, "Don't Measure Once", shows that answers vary across runs, across prompts and over time, and that a one-off observation is unreliable.
+
+## Limits of this analysis
+
+It is one site, 48 days, 26 texts in a technical niche. A commerce site or a known brand will have a different profile.
+
+Stage 3 only sees assistants that fetch the page at the moment of the question. An assistant that answers from an index leaves no trace here, so I may be cited without seeing it. Zero observed reads is not zero citations.
+
+The Worker only logs bots with a known User-Agent. An agent browsing with an ordinary browser passes as a person and stays out. Since I do not log human visits either, I do not know how many people reached the site by other routes.
+
+The 20 reads are a ceiling, for the reason given above. The clicks are a floor, because they depend on the referer.
+
+I read the Toolkit's sample, which is one chapter of five. Outside the report I confirmed the PHD and WARC forecast and the survey's 69% and 8%. I could not confirm Charlie Oscar's 63% in the primary source.
+
+The Search Console numbers cover 28 days, and Google folds AI Mode and AI Overviews into web search without separating them.
